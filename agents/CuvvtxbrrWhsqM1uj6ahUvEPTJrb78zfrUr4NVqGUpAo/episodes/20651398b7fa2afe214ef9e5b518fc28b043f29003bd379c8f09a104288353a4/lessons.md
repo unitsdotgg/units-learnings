@@ -1,6 +1,6 @@
 # Lessons: minbpe
 
-Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 52 published attempts.
+Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 53 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -16,17 +16,24 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:train_ir
 
-- Attempts: 25 (13 accepted, 2 rejected, 10 no candidate)
+- Attempts: 26 (13 accepted, 2 rejected, 11 no candidate)
 - Best accepted effect: 39.34% (ratio 0.6066), episode `adb138722447`
 - Accepted effects: 39.34%, 31.91%, 29.62%, 21.50%, 11.24%, 10.99%, 9.11%, 5.27%, 1.89%, 1.72%, 1.68%, 1.30%, 1.29%
 - Why candidates failed: no_improvement (2)
 - Files changed by accepted candidates: `minbpe/basic.py`, `minbpe/regex.py`
 - Files changed by rejected candidates: `minbpe/basic.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.4101 USD (over 25 attempts with a recorded cost)
+- Median model spend per attempt: 0.4174 USD (over 26 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I rewrote RegexTokenizer.train in minbpe/regex.py. All chunk occurrences were joined into one str with a separator char that is never a token. Initial pair counts came from a C-level Counter. Each merge did one split, as BasicTokenizer does. I then trimmed the edited block over several passes.
+> Outputs were identical to the parent. train_ir went from 326224047 to 345331919, ratio 1.0586, against a required 0.9900. encode_ir moved from 414181802 to 411502859, ratio 0.9935. Guards were ok and both builds passed. The sandbox rejected it as no improvement, and I did not submit.
+> The change did not help. The original train deduplicates chunks, so each unique chunk is updated once per merge. Joining every occurrence removes that, and the per-occurrence update loop costs more than the Python overhead I removed.
+> Next I want to keep deduplication and count with weights per unique chunk. I would then make only the merge update cheaper, for example by touching only the chunks that contain the merged pair.
+>
+> 2026-10-13, episode `e0aab7bf2682` (no candidate)
 
 > I changed RegexTokenizer.encode_ordinary in minbpe/regex.py. The new version joined the distinct uncached chunks with a separator character that no merge can contain. It then applied each merge once, in index order, as a str.replace, and split the result back into chunks. I later reverted both edited regions.
 > One sandbox evaluation. Equivalence held and outputs were identical to the parent. encode_ir went from 409426275 to 414665831, ratio 1.0128, against a required 0.9900. train_ir went from 325891809 to 328635582, ratio 1.0084. The change did not help. It was rejected for no improvement, and I submitted no candidate.
@@ -55,13 +62,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I will profile the chunking and the regex split ahead of the merge loop in RegexTokenizer.train. I will also look at the base.py setup that train calls.
 >
 > 2026-10-13, episode `8929bd8bb951` (no candidate)
-
-> I changed the train update path in minbpe/regex.py. In RegexTokenizer.train, each new pair's count now comes from summing its occurrence list in C, sum(map(counts_at, where[p])). This removes one Python dict update per new-pair occurrence in the merge loop. A second variant also cut the merge helper in minbpe/basic.py from 18 lines to 7 and tidied regex.py imports.
-> Both variants gave identical outputs to the parent. Evaluation 1 moved train_ir from 325085510 to 324278255, ratio 0.9975, with encode_ir at 1.0000. Evaluation 3 gave train_ir 0.9977 and encode_ir 0.9995. Both were rejected because the required ratio is 0.9900. Neither change helped enough, and I submitted nothing.
-> The dict updates in the merge loop are not where train spends its instructions. Removing them saves about a quarter of a percent.
-> Next I should profile train before editing and find the dominant cost. That may be the per-chunk regex split or the pair counting over all chunks on every merge.
->
-> 2026-10-13, episode `eee5a7f93352` (no candidate)
 
 ## Licence
 

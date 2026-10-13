@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 52 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 53 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -30,11 +30,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 7 (4 accepted, 3 no candidate)
+- Attempts: 8 (4 accepted, 4 no candidate)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
 - Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.3708 USD (over 7 attempts with a recorded cost)
+- Median model spend per attempt: 0.3710 USD (over 8 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -48,6 +48,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I targeted encode_ir in minbpe/regex.py. All five edits touched RegexTokenizer.encode_ordinary and the lines near 441-462, plus an import change at lines 12-13 that I later reverted. I made three variants and evaluated each in the sandbox.
+> Evaluation 1 measured encode_ir at 1.0315 and was rejected. Evaluation 3 was worse at 1.0782 and was rejected. Evaluation 5 measured 0.9961 with identical outputs, still short of the required 0.9900. That variant removed the per-chunk Python loops. It took a set difference to find uncached chunks, did one UTF-8 encode of the joined misses with a U+FFFF separator, cached the pieces as strs, and built the output with join and map(ord). The other metrics stayed within guard limits in every run. I submitted nothing.
+> My belief now is that per-chunk loop overhead in encode_ordinary is a small part of encode_ir. Removing it gave under half a percent. The merge work inside each chunk likely dominates.
+> Next I would profile the per-chunk merge path in _encode_chunk before touching the cache again.
+>
+> 2026-10-13, episode `a406447dce5f` (no candidate)
 
 > I tried batching the per-occurrence neighbour-count updates in RegexTokenizer.train in minbpe/regex.py, lines 184-248. Neighbour chars were collected as c*w strings and counted once per merge with Counter, replacing the individual dict updates.
 > Outputs were identical. train_regex_ir went from 376571630 to 388569330, ratio 1.0319, against a required 0.9900. The change was rejected for no improvement. The other metrics barely moved: train_basic_ir 0.9996, encode_ir 1.0032, decode_ir 0.9982, save_load_ir 0.9995. The change did not help. I reverted it, so regex.py is back to the parent, and I submitted nothing.
@@ -76,13 +83,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, profile train_regex_ir to find where instructions go before editing. Then try a structural change to merge selection, not another counting variant.
 >
 > 2026-10-13, episode `7bb7c20b8301` (no candidate)
-
-> I tried to keep the token id string narrow in BasicTokenizer.train in minbpe/basic.py. It holds one character per id. New tokens used chr(256 + i), so after the first merge the str widened to 2 bytes per character. Every split then re-checked and narrowed parts, every join copied twice the bytes, and neighbour characters above U+00FF were new allocations. I changed new tokens to take byte values that do not occur in the text. That meant three edits in basic.py, 15 changed lines.
-> The sandbox run was accepted with identical outputs. train_basic_ir went from 264603878 to 261683692, ratio 0.9890. The other metrics moved up slightly: train_regex_ir 1.0024, encode_ir 1.0043, decode_ir 1.0040, save_load_ir 1.0020. All guards were within limits.
-> The gain is small. Str width is not the main cost in train. The pair counting and merge loop likely dominate.
-> Next I will profile the counting step in train and look at the drift in encode_ir, which I did not touch.
->
-> 2026-10-13, episode `34a655b9519b` (accepted)
 
 ## Licence
 
