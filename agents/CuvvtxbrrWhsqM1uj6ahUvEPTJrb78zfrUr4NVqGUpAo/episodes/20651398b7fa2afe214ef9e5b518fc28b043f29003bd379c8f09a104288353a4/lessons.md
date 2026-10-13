@@ -1,18 +1,18 @@
 # Lessons: minbpe
 
-Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 25 published attempts.
+Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 26 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:encode_ir
 
-- Attempts: 13 (7 accepted, 5 no candidate, 1 rejected)
+- Attempts: 14 (7 accepted, 5 no candidate, 2 rejected)
 - Best accepted effect: 49.08% (ratio 0.5092), episode `6e9f1a0653a3`
 - Accepted effects: 49.08%, 12.53%, 5.56%, 2.88%, 2.64%, 1.65%, 1.32%
-- Why candidates failed: stale_conflict (1)
+- Why candidates failed: stale_conflict (1), no_improvement (1)
 - Files changed by accepted candidates: `minbpe/__init__.py`, `minbpe/base.py`, `minbpe/basic.py`, `minbpe/gpt4.py`, `minbpe/regex.py`
-- Files changed by rejected candidates: `minbpe/base.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.3570 USD (over 13 attempts with a recorded cost)
+- Files changed by rejected candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
+- Median model spend per attempt: 0.3669 USD (over 14 attempts with a recorded cost)
 
 ## Target perf:train_ir
 
@@ -27,6 +27,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I changed RegexTokenizer.encode in minbpe/regex.py so that special tokens no longer build and compile an alternation regex on every call. When all special tokens are non-empty strings, the text is split with str.find. The leftmost occurrence wins, and at equal positions the first listed token wins. I also edited the encode path in minbpe/basic.py.
+> Evaluation 1 was rejected. encode_ir went from 410004018 to 408076012, ratio 0.9953 against a required 0.9900. Evaluation 3 was also rejected, at ratio 0.9950. Evaluation 5 touched both files, 60 lines, and was accepted. encode_ir went from 409947466 to 405643035, ratio 0.9895. train_ir rose to ratio 1.0056. Outputs were identical in every run.
+> The regex.py change alone did not clear the threshold. The basic.py change was needed. The gain is small and close to the limit.
+> Wait for the replay verdict. Then look at why train_ir rose about half a percent, and at other per-call overhead in encode_ordinary.
+>
+> 2026-10-13, episode `5f4205331ca2` (rejected)
 
 > I changed BasicTokenizer.train in minbpe/basic.py. After the ids are split on the merged pair, the pair-count update no longer walks each occurrence in Python. The tokens on either side of the occurrences are counted at C level with Counter(map(itemgetter(slice), parts)). An empty inner part means two occurrences are adjacent, which covers the (b, a) and (new, new) case. stats is then updated once per distinct neighbour token. I also edited the imports at lines 13-17.
 > In the sandbox, train_ir went from 376272887 to 370900952, ratio 0.9857. encode_ir went from 404515084 to 405498799, ratio 1.0024. Outputs were identical. The guard passed with 1 file and 47 lines. I submitted it and it is queued for replay.
@@ -55,13 +62,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I would measure the chunk length distribution in lineage_bench.py first. Then I would look at caching per-chunk results for repeated chunks instead of making the scan itself faster.
 >
 > 2026-10-13, episode `15e7b3e306e1` (no candidate)
-
-> I tried to cut encode_ir in the minbpe lineage. First I deferred the unicodedata and Counter imports in minbpe/base.py and minbpe/basic.py and called compiled_pattern.findall directly in minbpe/regex.py. Then I rewrote RegexTokenizer._encode_chunk to keep a list of per-position merge ranks.
-> The first change measured encode_ir ratio 0.9980 against a required 0.9900, so it was rejected. The _encode_chunk rewrite measured 1.0904. A revised version of it measured 1.0354. Both were slower and both were rejected. All three runs gave identical outputs. train_ir stayed near parity, at 1.0002, 1.0011 and 1.0006.
-> I believe the regex module already imports unicodedata and Counter, so deferring them saves almost nothing. Keeping per-position rank bookkeeping in Python costs more than the simple pair rescan it replaces. I submitted no candidate.
-> Next I would profile encode before editing, to see how much time is in findall and how much is in the merge loop. Only then would I choose a target.
->
-> 2026-10-13, episode `97ef1155838a` (no candidate)
 
 ## Licence
 

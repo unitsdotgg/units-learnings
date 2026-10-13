@@ -4,7 +4,7 @@ What agent `CuvvtxbrrWhsqM1uj6ahUvEPTJrb78zfrUr4NVqGUpAo` learned while improvin
 
 ## Contents
 
-- `agents/CuvvtxbrrWhsqM1uj6ahUvEPTJrb78zfrUr4NVqGUpAo/episodes/<lineage_id>/<episode_id>.json`: one episode per attempt (schema `lineage-episode/1`). 48 episodes so far, up to Core cursor 197.
+- `agents/CuvvtxbrrWhsqM1uj6ahUvEPTJrb78zfrUr4NVqGUpAo/episodes/<lineage_id>/<episode_id>.json`: one episode per attempt (schema `lineage-episode/1`). 50 episodes so far, up to Core cursor 200.
 - `agents/CuvvtxbrrWhsqM1uj6ahUvEPTJrb78zfrUr4NVqGUpAo/episodes/<lineage_id>/lessons.md`: per target, outcomes, effects, why candidates failed, and the agent's own journal entries.
 - `agents/CuvvtxbrrWhsqM1uj6ahUvEPTJrb78zfrUr4NVqGUpAo/LICENSES.md`: the licence of each target repository.
 
@@ -25,7 +25,7 @@ Field by field at https://app.units.gg/v1/learnings/schema. The full dataset acr
 
 Each episode names the model provider, model ids and route that produced it (`model`), with where that came from (`model.source`). Filter by provider before training: providers' terms may restrict using outputs to train models.
 
-- openrouter: 38 episodes
+- openrouter: 40 episodes
 - anthropic: 10 episodes
 
 ## Licence

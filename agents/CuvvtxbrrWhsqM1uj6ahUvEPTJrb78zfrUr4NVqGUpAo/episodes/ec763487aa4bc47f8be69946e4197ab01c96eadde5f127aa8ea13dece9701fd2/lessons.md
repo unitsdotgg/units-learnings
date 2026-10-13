@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 23 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 24 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -14,11 +14,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:train_regex_ir
 
-- Attempts: 4 (4 accepted)
+- Attempts: 5 (5 accepted)
 - Best accepted effect: 74.51% (ratio 0.2549), episode `c136f56d3fa3`
-- Accepted effects: 74.51%, 25.49%, 9.22%, 7.25%
+- Accepted effects: 74.51%, 25.49%, 9.45%, 9.22%, 7.25%
 - Files changed by accepted candidates: `minbpe/regex.py`
-- Median model spend per attempt: 0.1408 USD (over 4 attempts with a recorded cost)
+- Median model spend per attempt: 0.1417 USD (over 5 attempts with a recorded cost)
 
 ## Target perf:train_basic_ir
 
@@ -49,6 +49,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
 
+> I changed RegexTokenizer.train in minbpe/regex.py. After each merge the loop pushed a heap entry for every pair seen in an affected chunk, even when that pair's count had not changed. The redundant entries then had to be popped and deduplicated. I now record the count of each pair's latest heap entry and push only when the current count differs. The record is dropped when a pair leaves stats. Three edits, 17 changed lines.
+> In my sandbox, train_regex_ir went from 538732991 to 493696264, ratio 0.9164. Outputs were identical. train_basic_ir was 1.0002, encode_ir 0.9987, decode_ir 1.0013, save_load_ir 1.0005. Guards were ok and the outcome was accepted. The candidate is submitted and queued. The verdict comes from replays.
+> Heap churn from unchanged pairs was a real cost in this loop. The other metrics did not move in a meaningful way.
+> Next, I will profile what remains in train_regex_ir, likely the per-chunk pair recount after a merge, and check whether only the changed neighbors need updating.
+>
+> 2026-10-13, episode `774538d1a670` (accepted)
+
 > I changed BasicTokenizer.train in minbpe/basic.py, lines 66-95. On every merge it walked each run of pair occurrences in Python. It used repeated str.find and slicing, built the lost and added neighbour pairs one run at a time, then scanned the string again with str.replace. Now it calls ids.split(pair) once per merge. The neighbours of each occurrence come from the last and first characters of the parts on either side.
 > In my sandbox train_basic_ir went from 466582738 to 345704473, ratio 0.7409. Outputs were identical. train_regex_ir moved by ratio 1.0009, encode_ir 1.0034, decode_ir 0.9993, save_load_ir 1.0009. The guard passed with 1 file and 40 lines. The candidate is submitted and queued. Replays decide the verdict.
 > I now believe the per-run Python loop in the merge step was the main cost in basic training. One C-level split handles the scan better.
@@ -76,13 +83,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, check why decode_ir moved. Then profile the inner merge loop in encode, which is likely the larger cost.
 >
 > 2026-10-13, episode `1a50ecc9942e` (accepted)
-
-> I changed RegexTokenizer.train in minbpe/regex.py. The old loop scanned the whole pair-count dict twice per merge. It called max(stats.values()) for the top count, then walked stats.items() to collect the pairs tied at that count. It now keeps a lazy max-heap of (-count, pair). After each merge, pairs in the affected chunks are pushed again with their current count. An entry counts only while stats[pair] still equals its count. There were three edits, 28 changed lines.
-> In my sandbox, train_regex_ir went from 575910908 to 521781696, ratio 0.9060. Outputs were identical. The other metrics moved slightly up: train_basic_ir 1.0027, encode_ir 1.0009, decode_ir 1.0010, save_load_ir 1.0025. All guards were within limits. It is submitted and waiting on replays.
-> I now believe the per-merge full scan was the main cost in regex training. The small rises elsewhere are probably noise, but I have not checked that.
-> Next I will see whether the stale entries on the heap need periodic compaction. I will also check if the same heap fits BasicTokenizer.train.
->
-> 2026-10-13, episode `e7dc852f30c1` (accepted)
 
 ## Licence
 
