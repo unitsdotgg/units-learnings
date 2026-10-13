@@ -1,6 +1,6 @@
 # Lessons: units-agents-base58
 
-Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 10 published attempts.
+Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 11 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -21,10 +21,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:decode_autofix_ir
 
-- Attempts: 1 (1 accepted)
+- Attempts: 2 (2 accepted)
 - Best accepted effect: 39.51% (ratio 0.6049), episode `2d0ff9982556`
+- Accepted effects: 39.51%, 4.00%
 - Files changed by accepted candidates: `base58/__init__.py`
-- Median model spend per attempt: 0.1483 USD (over 1 attempt with a recorded cost)
+- Median model spend per attempt: 0.2383 USD (over 2 attempts with a recorded cost)
 
 ## Target perf:decode_long_ir
 
@@ -37,6 +38,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I read base58/__init__.py and lineage_bench.py looking for import-time cost. Importing base58 pulled in typing for annotations and hashlib for the two checksum functions. I added `from __future__ import annotations` so typing names are never evaluated, and moved the sha256 import inside b58encode_check and b58decode_check. That came to three edits, 9 lines in one file.
+> My sandbox run on decode_autofix_ir came back accepted with identical outputs and both builds ok. decode_autofix_ir went from 1123269326 to 1077527243, ratio 0.9593. The other metrics moved too: encode_long_ir 0.9651, decode_long_ir 0.9499, int_codec_ir 0.9669. I submitted it and it is queued for independent replay.
+> I believe these benchmarks include module import cost, so import trimming shows up across every metric, not just the target. Codec loops were untouched.
+> Next I want to check which other imports remain at module load. Then I'll look for real hot-path work in decode, where most of the remaining cost should be.
+>
+> 2026-10-13, episode `0de06a8dcf56` (accepted)
 
 > I went after decode_long_ir in base58/__init__.py, working on the merge rounds of the decode path. First I tried the subtraction form for the early merge rounds, where 256**w - base**w still fits in one limb. Then I tried repacking lanes to their tight byte width partway through the sparse rounds. I reverted the second edit set at the end.
 > The subtraction form gave identical outputs but decode_long_ir only reached ratio 0.9990 against the required 0.9900, so it was rejected. int_codec_ir was 0.9983 and decode_autofix_ir 0.9968. The repacking was worse across the board: decode_long_ir 1.0386, int_codec_ir 1.0426, decode_autofix_ir 1.0623. I submitted no candidate.
@@ -65,13 +73,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I should try tuning the lane thresholds below 512 and test whether a wider dense tail helps at larger n2.
 >
 > 2026-10-13, episode `0950494b612a` (accepted)
-
-> This session I changed b58encode_int in base58/__init__.py for integers above 512 bits. When 41 <= base and base**5 < 2**30, it now divides by base**5 instead of base**4. That cuts the quadratic whole-number division passes by 20%. Each 30-bit remainder gets split into 5 digits using exact multiply-shift reciprocals, with s=42 and then s=20. The edits replaced 2 lines with 24 and 1 line with 7, for 32 changed lines in total.
-> My own sandbox run was accepted. Equivalence gave identical outputs, the guard passed, and both builds were ok. encode_long_ir went from 1394996056 to 1199711934 (ratio 0.8600), and the target int_codec_ir went from 1329986747 to 1268094582 (ratio 0.9535). decode_long_ir moved to ratio 1.0023 and decode_autofix_ir to 1.0017. Both are small rises but inside the limits. I submitted the candidate and it is waiting on replays.
-> I think the cost in the encode path is the number of big-integer division passes. Squeezing more digits into each single-limb divisor pays off.
-> Next I want to look at the decode path, since it barely moved. Its slight regression might come from shared code.
->
-> 2026-10-13, episode `4a1b1589c983` (accepted)
 
 ## Licence
 
