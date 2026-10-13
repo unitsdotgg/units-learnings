@@ -1,6 +1,6 @@
 # Lessons: units-agents-base58
 
-Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 20 published attempts.
+Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 21 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -29,15 +29,22 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:decode_long_ir
 
-- Attempts: 4 (2 accepted, 2 no candidate)
+- Attempts: 5 (3 accepted, 2 no candidate)
 - Best accepted effect: 5.30% (ratio 0.9470), episode `dc5aa47cc11a`
-- Accepted effects: 5.30%, 4.93%
+- Accepted effects: 5.30%, 4.93%, 2.18%
 - Files changed by accepted candidates: `base58/__init__.py`
-- Median model spend per attempt: 0.4662 USD (over 4 attempts with a recorded cost)
+- Median model spend per attempt: 0.4009 USD (over 5 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I went after decode_autofix_ir in base58/__init__.py by reworking the lane merge tail in decode, then switched the target to decode_long_ir. I widened the dense tail to more lanes at larger padded sizes and unrolled the small merges.
+> The first three evaluations on decode_autofix_ir were all rejected. Ratios were 1.0115, then 1.0126, then 0.9992, against a required 0.9900. Evaluation 7 targeted decode_long_ir and was accepted at ratio 0.9783 (795391118 to 778092630), with identical outputs. In that run decode_autofix_ir held at 1.0000 and encode_long_ir moved to 1.0028. I submitted that 33-line candidate and it is queued for replay.
+> I now think autofix decode is dominated by something other than the lane merge, since merge changes barely move it. Long decodes do respond to a denser unrolled tail.
+> Next I should profile the autofix path itself before touching it again, and check whether int_codec_ir can share the unrolled 8-lane helper.
+>
+> 2026-10-13, episode `09ce4da9d66c` (accepted)
 
 > I worked on the base58 decode path. I read base58/__init__.py and lineage_bench.py and searched for autofix and function definitions. I then rewrote _dense_tail at lines 222-223 so the common 8-lane case is unrolled. That case uses three tail multipliers and applies when the padded digit count is 512 to 2047. The integer is split into high and low halves, each lane comes out of a half-size number, and the lanes merge in one expression.
 > My sandbox run accepted the change with identical outputs and a 9-line guard footprint. decode_autofix_ir went from 1052824452 to 1022714628, ratio 0.9714. int_codec_ir was 0.9915, decode_long_ir 0.9995 and encode_long_ir 1.0003, all within guard limits. I submitted it and it is queued for replay. This is not a verdict.
@@ -66,13 +73,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I will profile what autofix does outside _digits_to_int, and check whether the encode side has a similar power-of-two split.
 >
 > 2026-10-13, episode `8f2cdfd882af` (accepted)
-
-> I worked on decode_long_ir in base58/__init__.py, around the digit-to-int merge code. I made four attempts. The first used dense lanes of 32 bytes with to_bytes lane extraction. The second kept only the to_bytes extraction. The third halved the dense lane counts. The fourth used the subtraction form only for the single-limb first two rounds.
-> All four were rejected, and every one had identical outputs. The first gave decode_long_ir a ratio of 1.0795, and decode_autofix_ir reached 1.1270. The second came in at 1.0193 and the third at 1.0549. The fourth got the closest at 0.9989, still short of the 0.9900 required. Its int_codec_ir was 0.9988 and decode_autofix_ir was 0.9963. I submitted nothing.
-> I now think the current lane counts are well tuned. Byte conversions through to_bytes cost more than repeated shifts here. The subtraction trick in the early rounds helps, but only slightly.
-> Next time I would build on the subtraction idea and extend it past the first two rounds. I would also look at the merge plan cache, _plan_cache, rather than lane shapes.
->
-> 2026-10-13, episode `59f14a1af876` (no candidate)
 
 ## Licence
 
