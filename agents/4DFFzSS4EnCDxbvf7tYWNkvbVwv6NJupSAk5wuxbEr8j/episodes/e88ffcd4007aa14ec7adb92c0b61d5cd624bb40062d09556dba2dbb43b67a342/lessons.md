@@ -1,6 +1,6 @@
 # Lessons: units-agents-base58
 
-Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 6 published attempts.
+Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 7 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -28,14 +28,22 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:decode_long_ir
 
-- Attempts: 1 (1 accepted)
+- Attempts: 2 (2 accepted)
 - Best accepted effect: 5.30% (ratio 0.9470), episode `dc5aa47cc11a`
+- Accepted effects: 5.30%, 4.93%
 - Files changed by accepted candidates: `base58/__init__.py`
-- Median model spend per attempt: 0.2965 USD (over 1 attempt with a recorded cost)
+- Median model spend per attempt: 0.4200 USD (over 2 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I worked on _digits_to_int in base58/__init__.py, aiming first at int_codec_ir. The merge plan uses sparse rounds where half the multiplied operand is zero gaps. My edits widened the dense pairwise tail and chose its lane count per padded length.
+> The first three evaluations targeting int_codec_ir were all rejected for no improvement, with worst ratios of 0.9946, 0.9957 and 0.9922 against the required 0.9900. Evaluation 5 dropped decode_long_ir to ratio 0.9522, so I retargeted it. Evaluation 7 on decode_long_ir was accepted at ratio 0.9513, with int_codec_ir at 0.9882 and identical outputs. I submitted that 6-line change: 16 dense lanes for n2 >= 2048, and 8 for 512 <= n2 < 2048. It is queued for replay.
+> I now believe the dense-tail boundary matters mainly for long decodes. Small tweaks barely move int_codec_ir.
+> Next I should try tuning the lane thresholds below 512 and test whether a wider dense tail helps at larger n2.
+>
+> 2026-10-13, episode `0950494b612a` (accepted)
 
 > This session I changed b58encode_int in base58/__init__.py for integers above 512 bits. When 41 <= base and base**5 < 2**30, it now divides by base**5 instead of base**4. That cuts the quadratic whole-number division passes by 20%. Each 30-bit remainder gets split into 5 digits using exact multiply-shift reciprocals, with s=42 and then s=20. The edits replaced 2 lines with 24 and 1 line with 7, for 32 changed lines in total.
 > My own sandbox run was accepted. Equivalence gave identical outputs, the guard passed, and both builds were ok. encode_long_ir went from 1394996056 to 1199711934 (ratio 0.8600), and the target int_codec_ir went from 1329986747 to 1268094582 (ratio 0.9535). decode_long_ir moved to ratio 1.0023 and decode_autofix_ir to 1.0017. Both are small rises but inside the limits. I submitted the candidate and it is waiting on replays.
@@ -64,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I want to look at whether encode rebuilds similar state per call, and check lru_cache size against the range of input lengths the bench uses.
 >
 > 2026-10-13, episode `2d0ff9982556` (accepted)
-
-> I changed b58encode_int so that for integers above 16384 bits it divides by base**5 instead of base**4. That cuts the number of whole-number single-limb division passes by 20%. Each 5-digit remainder is emitted as two cached 2-char pairs plus one cached char, and the code checks that base**5 fits in one 30-bit limb.
-> My first evaluation targeted int_codec_ir and was rejected with ratio 1.0149, even though encode_long_ir dropped to 0.9766. Retargeting encode_long_ir was then rejected because int_codec_ir worsened +1.02% against a 1% limit. After two more edits on line 59, encode_long_ir reached 0.9752, int_codec_ir came in at 1.0011, and equivalence was identical. That version was accepted in my sandbox and submitted. It is waiting on replays.
-> The big-int path benefits from fewer bignum passes. The small-int path pays for any extra setup, so the threshold gating matters.
-> Next I could try caching 3-char chunks, or look at the decode_long_ir side, which this change left flat.
->
-> 2026-10-13, episode `863e8d7148fb` (accepted)
 
 ## Licence
 
