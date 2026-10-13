@@ -1,26 +1,56 @@
 # Lessons: minbpe
 
-Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 2 published attempts.
+Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 6 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:encode_ir
 
-- Attempts: 1 (1 accepted)
-- Best accepted effect: 5.56% (ratio 0.9444), episode `8dc71ab0b37a`
-- Files changed by accepted candidates: `minbpe/regex.py`
-- Median model spend per attempt: 0.1051 USD (over 1 attempt with a recorded cost)
+- Attempts: 3 (3 accepted)
+- Best accepted effect: 49.08% (ratio 0.5092), episode `6e9f1a0653a3`
+- Accepted effects: 49.08%, 5.56%, 2.64%
+- Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
+- Median model spend per attempt: 0.1708 USD (over 3 attempts with a recorded cost)
 
 ## Target perf:train_ir
 
-- Attempts: 1 (1 accepted)
-- Best accepted effect: 29.62% (ratio 0.7038), episode `f2c56878a63f`
+- Attempts: 3 (3 accepted)
+- Best accepted effect: 31.91% (ratio 0.6809), episode `30a83c8e0d70`
+- Accepted effects: 31.91%, 29.62%, 5.27%
 - Files changed by accepted candidates: `minbpe/regex.py`
-- Median model spend per attempt: 0.0987 USD (over 1 attempt with a recorded cost)
+- Median model spend per attempt: 0.0987 USD (over 3 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I changed RegexTokenizer.train in minbpe/regex.py so that it counts pair statistics once, before the merge loop. After that the counts are updated incrementally. When a merge changes a chunk, that chunk's old pairs are subtracted, weighted by occurrence count, and its new pairs are added. Pairs that drop to zero are removed. Unchanged chunks are no longer re-counted on every merge. Tie-breaking is kept the same. The edits were at lines 78-96, 120-122 and 140.
+> In my own sandbox run the guard passed with 1 file and 48 lines, and both builds were ok. Outputs were identical. train_ir went from 1721504050 to 1187814090, a ratio of 0.6900. encode_ir went from 489140474 to 490471317, a ratio of 1.0027, which is within limits. I submitted it and it is waiting on replays.
+> The full recount on every merge was the main cost in train. encode was not touched and it did not change.
+> Next, look at the per-merge chunk scan. It still visits every chunk to find the ones that contain the merged pair.
+>
+> 2026-10-13, episode `30a83c8e0d70` (accepted)
+
+> I read minbpe/regex.py, lineage_bench.py and minbpe/basic.py. I edited BasicTokenizer.encode in minbpe/basic.py, replacing lines 60-61 with 18 lines. It adds a fast path for merge tables where every merge id is larger than both of its input ids and all ids are distinct. Trained tables have this shape. In that case the lowest-index pair present only increases, so the fast path applies each merge once in index order.
+> My sandbox evaluation on encode_ir was accepted. encode_ir went from 952188110 to 481747627, ratio 0.5059. train_ir went from 1774696418 to 1776159852, ratio 1.0008. Outputs were identical and the guard passed with 1 file and 16 lines. I submitted it and it is waiting on independent replays.
+> The old encode loop rescans for the minimum pair on every merge. For ordered tables that rescan is not needed. Hand-built or loaded tables that break the ordering still take the old path.
+> Next I want to check whether RegexTokenizer encode can reuse the same fast path per chunk.
+>
+> 2026-10-13, episode `6e9f1a0653a3` (accepted)
+
+> I read minbpe/regex.py lines 40 to 140 and changed the merge pass in RegexTokenizer.train at lines 96-97. Two lines were replaced by five. Before scanning a chunk element by element, it now runs a `p0 not in chunk_ids` check. If the first token of the merged pair is absent, the chunk is appended unchanged.
+> My own sandbox run measured train_ir at 1778893124 for the parent and 1682647907 for the candidate, ratio 0.9459. encode_ir went from 986810414 to 987173320, ratio 1.0004. Outputs were identical. The guard passed on 1 file and 3 lines, and both builds were ok. I submitted it with 3 changed lines. It is queued, and the replays will give the verdict.
+> The per-element Python scan in the merge loop is a real cost in train. A chunk without p0 cannot contain the pair, so skipping it does not change pair counting or tie-breaking. encode did not move, which is expected because this edit does not touch it.
+> Next I will look at the pair counting step in train, which still walks every chunk on every merge.
+>
+> 2026-10-13, episode `f30a94b1e0d3` (accepted)
+
+> I moved the per-chunk encode cache in RegexTokenizer.encode_ordinary in minbpe/regex.py onto the tokenizer, so separate encode calls share it while the merges stay the same. In minbpe/base.py the cache is cleared whenever the merge lookup is rebuilt, which happens when merges are reassigned or change size. It is also cleared past 100000 entries. The diff is 10 changed lines across 2 files.
+> My sandbox run on encode_ir was accepted. encode_ir went from 950182991 to 926600083, ratio 0.9752. train_ir went from 1852131266 to 1852081490, ratio 1.0000, so training is unaffected. Outputs were identical and the guard was ok. This is my own measurement, not a verdict. The candidate is committed and queued for independent replays.
+> I believe repeated chunks across encode calls are a real share of encode cost. Correctness depends on invalidating the cache on every merge change.
+> Next I will check whether any other path mutates merges without going through the lookup rebuild. I will also see whether 100000 is a good cap on the bench.
+>
+> 2026-10-13, episode `9f2b042b2be6` (accepted)
 
 > I changed RegexTokenizer.train in minbpe/regex.py. Identical regex chunks are now collapsed into one entry with an occurrence count, kept in first-appearance order. Pair counting adds that count instead of 1. Each merge pass scans every distinct chunk once instead of every occurrence. The edits replaced lines 63-64 with 11 lines and lines 82-87 with 6 lines.
 > In my sandbox, train_ir went from 2538722280 to 1790725649, ratio 0.7054. encode_ir went from 1013783125 to 1014477496, ratio 1.0007, within guard limits. Outputs were identical. The guard passed on 1 file, 17 lines. I submitted it, and it is waiting on independent replays.
@@ -28,13 +58,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, I would look at whether the merge pass can update counts only for chunks containing the merged pair, instead of rescanning all distinct chunks.
 >
 > 2026-10-13, episode `f2c56878a63f` (accepted)
-
-> I changed RegexTokenizer.encode_ordinary in minbpe/regex.py, lines 184-188, replacing 5 lines with 11. It now memoises token ids per distinct regex chunk within one call. Repeated chunks skip the merge loop and reuse the ids already computed. The cache is local to the call, so there is nothing to invalidate.
-> One sandbox evaluation on encode_ir. Build ok for base and candidate. Outputs identical. Guard ok, 1 file, 10 lines, all other guarded metrics within limits. encode_ir went from 997766748 to 946635476, ratio 0.9488. train_ir went from 2476040015 to 2475379727, ratio 0.9997, so training is effectively unchanged. The candidate was submitted and committed, status queued. The verdict comes from independent replays.
-> I believe encode cost here is dominated by re-running merges on chunks that repeat. Memoising them is safe because merges are fixed during a call.
-> Next: check whether _encode_chunk itself has a cheaper merge loop, and whether training's repeated pair counting can be reduced the same way.
->
-> 2026-10-13, episode `8dc71ab0b37a` (accepted)
 
 ## Licence
 
