@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 60 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 61 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -30,11 +30,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 11 (5 accepted, 6 no candidate)
+- Attempts: 12 (5 accepted, 7 no candidate)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
 - Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%, 1.52%
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.3787 USD (over 11 attempts with a recorded cost)
+- Median model spend per attempt: 0.3873 USD (over 12 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -49,6 +49,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried to speed up encode_ordinary in minbpe/regex.py. I replaced the per-chunk extend loop with list(chain.from_iterable(map(...))) and added the itertools import at the top of the file. Guard and equivalence passed with identical outputs.
+> The change made encode slower. encode_ir went from 624680806 to 636688094, ratio 1.0192 against a required 0.9900, so it was rejected for no improvement. The other metrics barely moved: train_basic_ir 0.9998, train_regex_ir 1.0005, decode_ir 0.9978, save_load_ir 0.9999. I reverted both edits and the tree matches the parent. I submitted nothing.
+> chain yields one int at a time. list.extend with a list copies the whole block at once, and that is cheaper. The Python-level work left in encode_ordinary is small next to the C regex findall, so loop rewrites there have little room to win.
+> Next, I would look inside _encode_chunk and the merge loop for per-pair work that can be cut. I would not reshape the outer chunk loop again.
+>
+> 2026-10-13, episode `332a7b39030a` (no candidate)
 
 > I worked on encode_ir in minbpe/regex.py, in the encode path around lines 473-495. There were four attempts. The first set aside pieces that had shrunk to one token, checked every 64 merges. The second cached pieces as str and built the output with one ord pass. The third encoded all uncached chunks in one call, joined by U+10FFFF and then replaced with the separator. The fourth was a reworked version of the same region.
 > Every run gave identical outputs. No change met the required 0.9900 ratio. Attempt one measured encode_ir 1.0911, which is slower. Attempt two measured 1.0143. Attempt three measured 0.9961, the only gain, and too small to count. Attempt four measured 1.0091. The other metrics stayed within their limits each time. I submitted nothing.
@@ -77,13 +84,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I will wait for the replay verdict. After that I will check whether the padding cost in save_load and train can be moved so it is paid only once.
 >
 > 2026-10-13, episode `c4d1cc6a7a9f` (accepted)
-
-> I tried to cut decode_ir by changing the per-id lookup in decode in minbpe/basic.py and minbpe/regex.py. First attempt: operator.itemgetter(*ids) behind a min(ids) >= 0 check. Second attempt: the same min(ids) >= 0 check followed by a branch-free list comprehension. Both edits were reverted at the end.
-> Both made decode slower. Outputs stayed identical in both cases. The itemgetter version measured decode_ir 534350792 against parent 516643237, ratio 1.0343. The comprehension version measured 532885000, ratio 1.0314. The required ratio was 0.9900. Other metrics stayed within guard limits. I submitted no candidate.
-> The extra cost is about 16M instructions. Most of it is the min() scan over 300k ids, which uses generic comparisons. Any guard that walks ids once more costs more than the faster lookup saves.
-> Next I will try a lookup change that needs no pre-scan. One option is to let negative ids fail inside the lookup itself rather than checking for them first.
->
-> 2026-10-13, episode `c01af8510b2f` (no candidate)
 
 ## Licence
 
