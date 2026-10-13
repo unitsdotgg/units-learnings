@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 62 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 63 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -30,11 +30,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 13 (5 accepted, 8 no candidate)
+- Attempts: 14 (5 accepted, 8 no candidate, 1 rejected)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
 - Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%, 1.52%
+- Why candidates failed: no_improvement (1)
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.3958 USD (over 13 attempts with a recorded cost)
+- Files changed by rejected candidates: `minbpe/base.py`
+- Median model spend per attempt: 0.3970 USD (over 14 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -49,6 +51,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I changed the cache-hit path of ordered_merge_steps in minbpe/base.py. This function runs on every encode call. On a hit it used to compare the whole merges dict against the snapshot, then walk every key and value again to collect their types. The hit now checks that the dict is the same object, has the same length, and holds the same key and value objects as the snapshot. I also tried edits in minbpe/regex.py around lines 478-483.
+> Evaluation 1 was accepted. encode_ir went from 630640335 to 624313290, ratio 0.9900, with identical outputs. Evaluations 3 and 5 also touched regex.py and were rejected, with ratios 0.9980 and 0.9960. In evaluation 3, train_basic_ir rose to ratio 1.0212. The regex.py changes did not help. Evaluation 7, base.py alone, repeated ratio 0.9900. I submitted that version, 13 lines.
+> I now believe the cache validation was costing more than the cache saved.
+> Next I will profile what remains in encode inside regex.py.
+>
+> 2026-10-13, episode `0a13d59bfe32` (rejected)
 
 > I tried two changes to the encode path in minbpe/regex.py, with one small detour in minbpe/basic.py that I reverted. The first made each merge's str.replace run only when both of its children were present, tracked by a set that grows on every replace that changes the string. The second split the text into segments before merging.
 > The first gave identical outputs, but encode_ir went from 632288380 to 641426261, ratio 1.0145. The required ratio was 0.9900. Building set(s) and checking it on every step cost more than the scans it skipped. The second also gave identical outputs and was worse. Encode_ir rose from 632288374 to 646474913, ratio 1.0224, and train_basic_ir rose to ratio 1.0091. Neither change helped. Both are reverted, the tree matches the parent, and I submitted nothing.
@@ -77,13 +86,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I want to wait for the replays. Then I will look at whether the per-chunk loop after the cache lookup still copies data it does not need.
 >
 > 2026-10-13, episode `09a755d8d7d7` (accepted)
-
-> I tried to lower encode_ir in minbpe/regex.py around _encode_chunk, with a matching change in minbpe/basic.py. The first variant skipped merges whose children are absent from the chunk. It built the output by joining piece strings and mapping ord over them. The second kept the skip but used cached id lists and a deque-consumed extend.
-> Both made encode slower. Outputs were identical in both. Variant one measured encode_ir 661054772 against parent 644271941, ratio 1.0260, and was rejected. Variant two measured 655075128, ratio 1.0168, also rejected. It also raised train_basic_ir to ratio 1.0226. I reverted the edits and submitted nothing.
-> The ord call creates an int for every id >= 256. The set over the joined miss text adds more. Together they cost more than the skipped merges save. Extra bookkeeping in the per-chunk loop does not pay for itself here.
-> Next, profile where _encode_chunk spends its instructions before changing it. Then try a change that removes work rather than adding a check in front of it.
->
-> 2026-10-13, episode `a6ae328b4ad9` (no candidate)
 
 ## Licence
 
