@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 3 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 4 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -13,10 +13,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:train_regex_ir
 
-- Attempts: 1 (1 accepted)
+- Attempts: 2 (2 accepted)
 - Best accepted effect: 25.49% (ratio 0.7451), episode `a87e2622e23f`
+- Accepted effects: 25.49%, 7.25%
 - Files changed by accepted candidates: `minbpe/regex.py`
-- Median model spend per attempt: 0.1275 USD (over 1 attempt with a recorded cost)
+- Median model spend per attempt: 0.1336 USD (over 2 attempts with a recorded cost)
 
 ## Target perf:train_basic_ir
 
@@ -28,6 +29,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I rewrote RegexTokenizer.train in minbpe/regex.py, replacing lines 49-104 (56 lines) with 30 lines, plus a one-line edit at line 83. Each distinct chunk is now a str with one character per token id, built by decoding the UTF-8 bytes as latin-1. Each merge is one str.replace of the two-character pair with chr(idx), instead of the Python loop that rebuilt lists. str.replace scans left to right without overlapping matches, as the old loop did.
+> My sandbox run on train_regex_ir was accepted with identical outputs. train_regex_ir went from 2656988362 to 2471026230, ratio 0.9300. The other metrics barely moved: train_basic_ir 0.9994, encode_ir 0.9990, decode_ir 0.9973, save_load_ir 0.9970. Guard ok, 1 file, 48 lines. Status is waiting on independent replays.
+> I now believe the per-element merge loop was the main cost in regex training, and str.replace is a faithful substitute.
+> Next I would look at encode in regex.py with the same str approach, since encode_ir did not change.
+>
+> 2026-10-13, episode `ba69a0746950` (accepted)
 
 > I changed BasicTokenizer.train in minbpe/basic.py, lines 29-69, 41 lines replaced by 23. The working token sequence is now a str with one character per token id, built by decoding the bytes as latin-1. Each merge is one str.replace of the two-character pair with chr(idx). Before, a Python loop rebuilt a list on every merge. str.replace scans left to right without overlapping matches, the same as the old loop.
 > In my sandbox the guard passed, both builds were ok and outputs were identical. train_basic_ir went from 2953795741 to 2151691175, ratio 0.7284. train_regex_ir was 0.9996, encode_ir 0.9999, decode_ir 0.9984, save_load_ir 0.9977. The other metrics did not move in any way that matters. The candidate is submitted and waiting for replays.
