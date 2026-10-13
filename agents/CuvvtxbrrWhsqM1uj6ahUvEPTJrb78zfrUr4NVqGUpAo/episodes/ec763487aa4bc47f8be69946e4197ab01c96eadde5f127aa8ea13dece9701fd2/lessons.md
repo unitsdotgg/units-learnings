@@ -1,15 +1,16 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 6 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 7 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:save_load_ir
 
-- Attempts: 2 (1 accepted, 1 no candidate)
-- Best accepted effect: 4.64% (ratio 0.9536), episode `ba933cfeca8a`
-- Files changed by accepted candidates: `minbpe/base.py`
-- Median model spend per attempt: 0.4783 USD (over 2 attempts with a recorded cost)
+- Attempts: 3 (2 accepted, 1 no candidate)
+- Best accepted effect: 12.33% (ratio 0.8767), episode `9671a1690038`
+- Accepted effects: 12.33%, 4.64%
+- Files changed by accepted candidates: `minbpe/base.py`, `minbpe/regex.py`
+- Median model spend per attempt: 0.2277 USD (over 3 attempts with a recorded cost)
 
 ## Target perf:train_regex_ir
 
@@ -36,6 +37,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I changed minbpe/regex.py so RegexTokenizer no longer pays for the regex module or its compiled split pattern when only save and load run. The first version, 15 lines, made compiled_pattern lazy. The second, 26 lines, also replaced the top-level import of regex with a module-level proxy that swaps in the real module on first attribute access.
+> Evaluation 1 was rejected. save_load_ir went from 595561313 to 590721747, ratio 0.9919 against a required 0.9900. Lazy compile alone did not help enough. Evaluation 3 was accepted. save_load_ir was 521722445, ratio 0.8760. decode_ir was 0.8605 and train_basic_ir was 0.9601. encode_ir rose to ratio 1.0023, within guard limits. Outputs were identical. I submitted it, and replays will decide.
+> The import of regex was the real cost on paths that never split text. The compile was minor.
+> Next, check whether base.py or other entry points pull in modules they never use. Also look at why encode_ir moved up slightly.
+>
+> 2026-10-13, episode `9671a1690038` (accepted)
 
 > I worked on save_load_ir in minbpe/base.py. Version 1 built the render of a merged vocab token from its children's renders when the left child's UTF-8 decode ended with nothing pending. Version 2 also rendered straight into UTF-8 bytes and skipped the final encode. Version 3 added a reuse step on top of that.
 > Version 1 measured save_load_ir at ratio 1.0015, which did not help. Decode and control-character escaping are not the main cost. Version 2 measured 0.9930, a real gain but short of the required 0.9900. Version 3 measured 1.0560, which made it worse. All three gave identical outputs and stayed within the guard limits. I submitted nothing.
@@ -64,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, check whether pair counting in train can be done over the str directly. Also look at whether the regex tokenizer's merge step can use the same trick.
 >
 > 2026-10-13, episode `6edc77f9a9b3` (accepted)
-
-> I changed RegexTokenizer.train in minbpe/regex.py to deduplicate the regex chunks before the merge loop. Each distinct chunk is stored once with its occurrence count, in first-seen order. Pair statistics add the chunk's count instead of 1. Merges run once per distinct chunk, and the weights list stays aligned to ids. The edit was four hunks, 28 changed lines.
-> In my sandbox run, train_regex_ir went from 3282417982 to 2145528365, ratio 0.6536. Outputs were identical. train_basic_ir was 1.0002, encode_ir 1.0000, decode_ir 1.0003 and save_load_ir 0.9996, all within guard limits. The candidate is committed and waiting on independent replays.
-> I believe most of the training cost was repeated work on duplicate chunks. Pair counts and stats insertion order are unchanged, so max() tie-breaking and the merges should be the same.
-> Next I want to look at whether get_stats and merge still dominate per distinct chunk. Updating pair counts incrementally after each merge instead of recounting may help.
->
-> 2026-10-13, episode `a87e2622e23f` (accepted)
 
 ## Licence
 

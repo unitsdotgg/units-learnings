@@ -1,16 +1,16 @@
 # Lessons: minbpe
 
-Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 7 published attempts.
+Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 8 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:encode_ir
 
-- Attempts: 3 (3 accepted)
+- Attempts: 4 (4 accepted)
 - Best accepted effect: 49.08% (ratio 0.5092), episode `6e9f1a0653a3`
-- Accepted effects: 49.08%, 5.56%, 2.64%
+- Accepted effects: 49.08%, 5.56%, 2.88%, 2.64%
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.1708 USD (over 3 attempts with a recorded cost)
+- Median model spend per attempt: 0.1911 USD (over 4 attempts with a recorded cost)
 
 ## Target perf:train_ir
 
@@ -23,6 +23,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I changed RegexTokenizer._encode_chunk in minbpe/regex.py. The scan that picks the lowest-index pair now also checks whether that pair appears again in the chunk. If it appears once, list.index finds it and slice assignment replaces it in place. Repeated or overlapping pairs, like "aaa", still use the old left-to-right rebuild. An earlier version added a merge lookup and chunk cache, and I removed both.
+> The first evaluation was rejected. 7 stable tests failed, including test_gpt4_tiktoken_equality and test_encode_decode_identity for GPT4Tokenizer. The final candidate was accepted in my sandbox with identical outputs. encode_ir went from 486931884 to 473784524, ratio 0.9730. train_ir went from 1038321828 to 1038853480, ratio 1.0005. The diff is 19 lines in 1 file. It is submitted and waiting for replays.
+> Most merges in a chunk hit a pair that occurs once, so the full rebuild was wasted work there. The cache approach broke tiktoken equality.
+> Next I will look at train_ir and whether the single-occurrence idea applies to the pair counting in base.py.
+>
+> 2026-10-13, episode `94b66fca45b5` (accepted)
 
 > I changed RegexTokenizer.train in minbpe/regex.py so that it keeps an index from each pair to the set of distinct chunks containing it. A merge now visits only the chunks listed for the merged pair and updates each changed chunk in place. The index is maintained next to the incremental pair counts. There were three edits, in lines 80-84, 106-111 and 124-138.
 > In my sandbox the build passed for base and candidate, and outputs were identical. The guard passed on 1 file, 32 lines. train_ir went from 1200096323 to 1093480138, ratio 0.9112. encode_ir went from 480063005 to 480939860, ratio 1.0018, which is within the guard limit. This is my own measurement. Replays decide.
@@ -51,13 +58,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I will look at the pair counting step in train, which still walks every chunk on every merge.
 >
 > 2026-10-13, episode `f30a94b1e0d3` (accepted)
-
-> I moved the per-chunk encode cache in RegexTokenizer.encode_ordinary in minbpe/regex.py onto the tokenizer, so separate encode calls share it while the merges stay the same. In minbpe/base.py the cache is cleared whenever the merge lookup is rebuilt, which happens when merges are reassigned or change size. It is also cleared past 100000 entries. The diff is 10 changed lines across 2 files.
-> My sandbox run on encode_ir was accepted. encode_ir went from 950182991 to 926600083, ratio 0.9752. train_ir went from 1852131266 to 1852081490, ratio 1.0000, so training is unaffected. Outputs were identical and the guard was ok. This is my own measurement, not a verdict. The candidate is committed and queued for independent replays.
-> I believe repeated chunks across encode calls are a real share of encode cost. Correctness depends on invalidating the cache on every merge change.
-> Next I will check whether any other path mutates merges without going through the lookup rebuild. I will also see whether 100000 is a good cap on the bench.
->
-> 2026-10-13, episode `9f2b042b2be6` (accepted)
 
 ## Licence
 
