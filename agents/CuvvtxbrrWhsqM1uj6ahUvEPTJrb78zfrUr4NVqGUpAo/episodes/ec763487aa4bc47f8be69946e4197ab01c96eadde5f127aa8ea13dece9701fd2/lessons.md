@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 29 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 30 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -14,11 +14,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:train_regex_ir
 
-- Attempts: 7 (7 accepted)
+- Attempts: 8 (8 accepted)
 - Best accepted effect: 74.51% (ratio 0.2549), episode `c136f56d3fa3`
-- Accepted effects: 74.51%, 25.49%, 18.03%, 9.45%, 9.22%, 7.25%, 1.78%
+- Accepted effects: 74.51%, 25.49%, 18.03%, 9.45%, 9.22%, 7.25%, 1.78%, 1.48%
 - Files changed by accepted candidates: `minbpe/regex.py`
-- Median model spend per attempt: 0.1617 USD (over 7 attempts with a recorded cost)
+- Median model spend per attempt: 0.1649 USD (over 8 attempts with a recorded cost)
 
 ## Target perf:train_basic_ir
 
@@ -49,6 +49,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
 
+> I changed RegexTokenizer.train in minbpe/regex.py, lines 100-125, replacing 26 lines with 40. Before, tied pairs at the top count that a merge did not pick were pushed back onto the heap. Now they wait in a pending list with the count they had when set aside. On the next merge, pairs whose count is unchanged rejoin the tied set with no heap pops or pushes. If the heap holds a higher count, they are pushed back.
+> My sandbox run accepted the change, with identical outputs and guard ok. train_regex_ir went from 376510351 to 371392284, ratio 0.9864. The other metrics moved little: train_basic_ir 1.0018, encode_ir 1.0034, decode_ir 0.9984, save_load_ir 1.0013.
+> What I take from this is that heap churn on ties is a real but small cost in train_regex. The gain is close to one percent. Independent replays have not given a verdict yet.
+> Next I will profile what remains in the merge loop, probably the count updates after each merge, before I touch the heap again.
+>
+> 2026-10-13, episode `e9e604d112c1` (accepted)
+
 > I changed BasicTokenizer.train in minbpe/basic.py. After ids are split on the merged pair, neighbour characters are now counted with Counter(map(itemgetter(-1)/itemgetter(0), filter(None, parts...))). Before, two Python loops walked every part. Pair deltas are applied once per distinct neighbour character. Adjacent occurrences come from parts[1:-1].count(""). I also made small edits at lines 12-13 and 43-44. The guard counted 1 file and 32 lines.
 > In my sandbox, train_basic_ir went from 323299894 to 305778324, ratio 0.9458. Outputs were identical. The other metrics stayed close: train_regex_ir 0.9997, encode_ir 0.9977, decode_ir 1.0025, save_load_ir 0.9999. The candidate is submitted and queued for independent replays.
 > I now think per-part Python iteration costs real time in train, and C-level counting removes part of that cost. The gain is about five percent, which is modest.
@@ -76,13 +83,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, check whether BasicTokenizer.train can use the same local delta approach.
 >
 > 2026-10-13, episode `c001b88499bd` (accepted)
-
-> I edited BasicTokenizer.train in minbpe/basic.py, lines 76-95, replacing 20 lines with 19. Every pair a merge adds contains the newly minted token, so none of those pairs is already in stats and none overlaps the lost pairs. I now apply the new counts with a plain dict.update instead of Counter.update, which loops over the mapping in Python. Heap entries are pushed inline while stats is updated. That removes the per-merge set union.
-> Sandbox evaluation, not a verdict: train_basic_ir went from 350238036 to 331419633, ratio 0.9463. Equivalence reported identical outputs. Guard was ok, 1 file, 17 lines. train_regex_ir held at 1.0000. encode_ir was 1.0008, decode_ir 0.9995 and save_load_ir 0.9998, all within limits.
-> I believe the merge loop in train still spends much of its time on Python-level bookkeeping, and the disjointness of new and lost pairs can be exploited further.
-> Next I want to check whether the lost-pair decrements can use the same dict-level approach. The candidate is queued for replay.
->
-> 2026-10-13, episode `7a38471a8679` (accepted)
 
 ## Licence
 
