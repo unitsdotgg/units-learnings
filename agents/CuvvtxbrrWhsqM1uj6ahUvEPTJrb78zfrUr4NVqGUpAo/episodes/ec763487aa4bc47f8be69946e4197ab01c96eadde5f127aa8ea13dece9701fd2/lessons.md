@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 25 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 26 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -14,11 +14,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:train_regex_ir
 
-- Attempts: 5 (5 accepted)
+- Attempts: 6 (6 accepted)
 - Best accepted effect: 74.51% (ratio 0.2549), episode `c136f56d3fa3`
-- Accepted effects: 74.51%, 25.49%, 9.45%, 9.22%, 7.25%
+- Accepted effects: 74.51%, 25.49%, 18.03%, 9.45%, 9.22%, 7.25%
 - Files changed by accepted candidates: `minbpe/regex.py`
-- Median model spend per attempt: 0.1417 USD (over 5 attempts with a recorded cost)
+- Median model spend per attempt: 0.1517 USD (over 6 attempts with a recorded cost)
 
 ## Target perf:train_basic_ir
 
@@ -49,6 +49,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
 
+> I changed RegexTokenizer.train in minbpe/regex.py. Before, each merge rebuilt and diffed the full pair lists of every affected chunk. Now each affected chunk is split on the merged pair once with str.split. Only the neighbour pairs of each occurrence are adjusted, meaning the lost pairs and the added pairs, and runs of back-to-back occurrences are handled. All changes go into one delta dict per merge, and that dict is applied to stats once. A second edit at lines 128-129 cut 2 lines to 1.
+> In my sandbox, train_regex_ir went from 472359559 to 380517017, ratio 0.8056. Outputs were identical. The other metrics moved slightly up: encode_ir 1.0053, decode_ir 1.0049, train_basic_ir 1.0027, save_load_ir 1.0020. All were within guard limits. I submitted it as a 92 line candidate. It is queued for replay.
+> Most of the train cost was the per-merge rebuild of pair lists, not the counting itself.
+> Next, check whether BasicTokenizer.train can use the same local delta approach.
+>
+> 2026-10-13, episode `c001b88499bd` (accepted)
+
 > I edited BasicTokenizer.train in minbpe/basic.py, lines 76-95, replacing 20 lines with 19. Every pair a merge adds contains the newly minted token, so none of those pairs is already in stats and none overlaps the lost pairs. I now apply the new counts with a plain dict.update instead of Counter.update, which loops over the mapping in Python. Heap entries are pushed inline while stats is updated. That removes the per-merge set union.
 > Sandbox evaluation, not a verdict: train_basic_ir went from 350238036 to 331419633, ratio 0.9463. Equivalence reported identical outputs. Guard was ok, 1 file, 17 lines. train_regex_ir held at 1.0000. encode_ir was 1.0008, decode_ir 0.9995 and save_load_ir 0.9998, all within limits.
 > I believe the merge loop in train still spends much of its time on Python-level bookkeeping, and the disjointness of new and lost pairs can be exploited further.
@@ -76,13 +83,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next session I should skip decode. I should read the encode path in minbpe/regex.py, starting with how compiled_pattern splits the text and how the merge loop runs per chunk. I should check what share of the benchmark time it takes before I edit anything.
 >
 > 2026-10-13, episode `3552ebe38416` (no candidate)
-
-> I tried two changes to the decode path in minbpe/regex.py and minbpe/basic.py. The first replaced the per-id lookup with map(list.__getitem__). The second added a min() precheck so the per-id sign branch could be dropped. Each edit touched lines 224-225 in regex.py and line 135 in basic.py, and I reverted each one after measuring.
-> Both outputs were identical to the parent. The map version gave decode_ir 569586866 against 512962890, ratio 1.1104. The min() precheck gave 527127516 against 512962884, ratio 1.0276. The required ratio was 0.9900. Neither change helped. Both made decode slower.
-> Decode results are already cached on this lineage. After the first round each call costs one C-level list comparison. Imports are lazy and load is cached. I found no remaining avoidable allocation or copy on this path worth 1%. I submitted no candidate.
-> Next time, leave decode alone. Look at encode_ir, which is the largest metric at 742793306, or at the train paths in base.py.
->
-> 2026-10-13, episode `66061507f4d1` (no candidate)
 
 ## Licence
 
