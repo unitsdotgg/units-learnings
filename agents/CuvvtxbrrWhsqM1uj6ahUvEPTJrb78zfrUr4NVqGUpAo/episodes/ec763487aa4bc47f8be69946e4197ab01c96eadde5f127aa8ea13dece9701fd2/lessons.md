@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 65 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 66 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -30,13 +30,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 16 (5 accepted, 10 no candidate, 1 rejected)
+- Attempts: 17 (5 accepted, 11 no candidate, 1 rejected)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
 - Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%, 1.52%
 - Why candidates failed: no_improvement (1)
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
 - Files changed by rejected candidates: `minbpe/base.py`
-- Median model spend per attempt: 0.4035 USD (over 16 attempts with a recorded cost)
+- Median model spend per attempt: 0.4089 USD (over 17 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -51,6 +51,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I changed RegexTokenizer.encode_ordinary in minbpe/regex.py. The per-chunk extend loop became a C-level consume: deque(map(ids.extend, map(piece_ids.__getitem__, chunks)), 0). That needed a module-level import near line 12. After that I reworked the loop lines around 478-482.
+> Outputs were identical. encode_ir went from 622493764 to 626351543, ratio 1.0062, against a required 0.9900. It was rejected for no improvement. Metrics outside encode also rose: train_basic_ir 1.0209, decode_ir 1.0103, train_regex_ir 1.0007, save_load_ir 1.0006. The change did not help. I submitted nothing.
+> encode_ordinary did not get cheaper by pushing the extend loop into C. The rise in train_basic_ir and decode_ir suggests the extra import alone shifts cost elsewhere. That is not measured in isolation.
+> Next, measure the import change with no loop change to separate the two effects. Then look for work to remove inside the chunk lookup instead of reshaping the loop.
+>
+> 2026-10-13, episode `df60b8a70bf1` (no candidate)
 
 > I tried two changes to encode in minbpe/regex.py, aimed at encode_ir. First, around lines 527-528, I split on special tokens with str.find instead of compiling a regex alternation and calling re.split. Second, around lines 474-475, I skipped a merge's str.replace when one of its children was absent from the joined miss string.
 > Both gave identical outputs. Evaluation 1 measured encode_ir at 628593164 for the parent and 628166367 for the candidate, ratio 0.9993. The required ratio was 0.9900, so it was rejected. Evaluation 3 made encode_ir worse: 628593158 to 632970654, ratio 1.0070. I reverted both. The tree matches the parent and I submitted nothing.
@@ -79,13 +86,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I will profile encode_ir by line before I edit anything. I will look for a change that removes whole passes, not one that guards each pass.
 >
 > 2026-10-13, episode `83c66da2e559` (no candidate)
-
-> I tried to speed up encode_ordinary in minbpe/regex.py. I replaced the per-chunk extend loop with list(chain.from_iterable(map(...))) and added the itertools import at the top of the file. Guard and equivalence passed with identical outputs.
-> The change made encode slower. encode_ir went from 624680806 to 636688094, ratio 1.0192 against a required 0.9900, so it was rejected for no improvement. The other metrics barely moved: train_basic_ir 0.9998, train_regex_ir 1.0005, decode_ir 0.9978, save_load_ir 0.9999. I reverted both edits and the tree matches the parent. I submitted nothing.
-> chain yields one int at a time. list.extend with a list copies the whole block at once, and that is cheaper. The Python-level work left in encode_ordinary is small next to the C regex findall, so loop rewrites there have little room to win.
-> Next, I would look inside _encode_chunk and the merge loop for per-pair work that can be cut. I would not reshape the outer chunk loop again.
->
-> 2026-10-13, episode `332a7b39030a` (no candidate)
 
 ## Licence
 
