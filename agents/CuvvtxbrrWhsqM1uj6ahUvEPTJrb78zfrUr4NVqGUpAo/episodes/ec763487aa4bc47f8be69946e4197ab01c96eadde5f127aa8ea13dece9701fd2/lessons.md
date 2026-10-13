@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 56 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 58 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -30,24 +30,39 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 8 (4 accepted, 4 no candidate)
+- Attempts: 9 (4 accepted, 5 no candidate)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
 - Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.3710 USD (over 8 attempts with a recorded cost)
+- Median model spend per attempt: 0.3712 USD (over 9 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
-- Attempts: 15 (13 no candidate, 1 rejected, 1 accepted)
-- Best accepted effect: 1.11% (ratio 0.9889), episode `b45e5d23eac5`
+- Attempts: 16 (13 no candidate, 1 rejected, 2 accepted)
+- Best accepted effect: 6.02% (ratio 0.9398), episode `c4d1cc6a7a9f`
+- Accepted effects: 6.02%, 1.11%
 - Why candidates failed: no_improvement (1)
-- Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`
+- Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
 - Files changed by rejected candidates: `minbpe/base.py`, `minbpe/basic.py`
-- Median model spend per attempt: 0.4320 USD (over 15 attempts with a recorded cost)
+- Median model spend per attempt: 0.4208 USD (over 16 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried to lower encode_ir in minbpe/regex.py around _encode_chunk, with a matching change in minbpe/basic.py. The first variant skipped merges whose children are absent from the chunk. It built the output by joining piece strings and mapping ord over them. The second kept the skip but used cached id lists and a deque-consumed extend.
+> Both made encode slower. Outputs were identical in both. Variant one measured encode_ir 661054772 against parent 644271941, ratio 1.0260, and was rejected. Variant two measured 655075128, ratio 1.0168, also rejected. It also raised train_basic_ir to ratio 1.0226. I reverted the edits and submitted nothing.
+> The ord call creates an int for every id >= 256. The set over the joined miss text adds more. Together they cost more than the skipped merges save. Extra bookkeeping in the per-chunk loop does not pay for itself here.
+> Next, profile where _encode_chunk spends its instructions before changing it. Then try a change that removes work rather than adding a check in front of it.
+>
+> 2026-10-13, episode `a6ae328b4ad9` (no candidate)
+
+> I worked on the decode path in minbpe. In minbpe/regex.py I padded the cached id to bytes lookup list in RegexTokenizer with a None tail as long as the list. In minbpe/basic.py I did the same for the BasicTokenizer vocab list. A negative id now hits None, so join raises TypeError, or it runs past the start of the list and raises IndexError. It can no longer wrap onto a real token. That let the per-id comprehension drop its idx >= 0 test.
+> My sandbox run was accepted with identical outputs. decode_ir went from 564689157 to 531228415, ratio 0.9407. The other metrics stayed within guard limits: train_basic_ir 1.0013, train_regex_ir 1.0003, encode_ir 1.0001, save_load_ir 1.0009.
+> In this code the per-id bounds test was a measurable part of decode cost. The small rises elsewhere may come from building the longer padded lists.
+> Next I will wait for the replay verdict. After that I will check whether the padding cost in save_load and train can be moved so it is paid only once.
+>
+> 2026-10-13, episode `c4d1cc6a7a9f` (accepted)
 
 > I tried to cut decode_ir by changing the per-id lookup in decode in minbpe/basic.py and minbpe/regex.py. First attempt: operator.itemgetter(*ids) behind a min(ids) >= 0 check. Second attempt: the same min(ids) >= 0 check followed by a branch-free list comprehension. Both edits were reverted at the end.
 > Both made decode slower. Outputs stayed identical in both cases. The itemgetter version measured decode_ir 534350792 against parent 516643237, ratio 1.0343. The comprehension version measured 532885000, ratio 1.0314. The required ratio was 0.9900. Other metrics stayed within guard limits. I submitted no candidate.
@@ -69,20 +84,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > The candidate is queued for replay. Next I will profile the increment dict and the heap pushes to find more of the cost.
 >
 > 2026-10-13, episode `9d9e9cd0f96c` (accepted)
-
-> I targeted encode_ir in minbpe/regex.py. All five edits touched RegexTokenizer.encode_ordinary and the lines near 441-462, plus an import change at lines 12-13 that I later reverted. I made three variants and evaluated each in the sandbox.
-> Evaluation 1 measured encode_ir at 1.0315 and was rejected. Evaluation 3 was worse at 1.0782 and was rejected. Evaluation 5 measured 0.9961 with identical outputs, still short of the required 0.9900. That variant removed the per-chunk Python loops. It took a set difference to find uncached chunks, did one UTF-8 encode of the joined misses with a U+FFFF separator, cached the pieces as strs, and built the output with join and map(ord). The other metrics stayed within guard limits in every run. I submitted nothing.
-> My belief now is that per-chunk loop overhead in encode_ordinary is a small part of encode_ir. Removing it gave under half a percent. The merge work inside each chunk likely dominates.
-> Next I would profile the per-chunk merge path in _encode_chunk before touching the cache again.
->
-> 2026-10-13, episode `a406447dce5f` (no candidate)
-
-> I tried batching the per-occurrence neighbour-count updates in RegexTokenizer.train in minbpe/regex.py, lines 184-248. Neighbour chars were collected as c*w strings and counted once per merge with Counter, replacing the individual dict updates.
-> Outputs were identical. train_regex_ir went from 376571630 to 388569330, ratio 1.0319, against a required 0.9900. The change was rejected for no improvement. The other metrics barely moved: train_basic_ir 0.9996, encode_ir 1.0032, decode_ir 0.9982, save_load_ir 0.9995. The change did not help. I reverted it, so regex.py is back to the parent, and I submitted nothing.
-> Building the weighted strings and running Counter on every merge costs more than the plain dict updates they replaced. The existing per-occurrence updates in train are already cheap at this scale.
-> Next, look for work that can be skipped entirely in train, not regrouped. Leave the counting itself as plain dict updates.
->
-> 2026-10-13, episode `3ccc654cb0ab` (no candidate)
 
 ## Licence
 
