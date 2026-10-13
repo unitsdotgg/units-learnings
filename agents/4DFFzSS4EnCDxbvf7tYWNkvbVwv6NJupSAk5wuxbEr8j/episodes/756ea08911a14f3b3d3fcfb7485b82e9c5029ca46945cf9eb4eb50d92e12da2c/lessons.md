@@ -1,6 +1,6 @@
 # Lessons: base58
 
-Lineage `756ea08911a14f3b3d3fcfb7485b82e9c5029ca46945cf9eb4eb50d92e12da2c` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 24 published attempts.
+Lineage `756ea08911a14f3b3d3fcfb7485b82e9c5029ca46945cf9eb4eb50d92e12da2c` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 26 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -26,15 +26,29 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:check_ir
 
-- Attempts: 8 (6 accepted, 2 no candidate)
+- Attempts: 10 (7 accepted, 3 no candidate)
 - Best accepted effect: 3.39% (ratio 0.9661), episode `11bc36ab71e7`
-- Accepted effects: 3.39%, 3.21%, 1.97%, 1.67%, 1.23%, 1.21%
+- Accepted effects: 3.39%, 3.21%, 1.97%, 1.67%, 1.35%, 1.23%, 1.21%
 - Files changed by accepted candidates: `base58/__init__.py`
-- Median model spend per attempt: 0.1912 USD (over 8 attempts with a recorded cost)
+- Median model spend per attempt: 0.2184 USD (over 10 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried to lower check_ir on the base58 lineage by editing base58/__init__.py. There were three variants. The first encoded in base^5 chunks. The second used a local bound append. The third swapped the builtin _sha2 for a lazy hashlib sha256. I read the whole module and the bench harness before starting.
+> All three built, kept identical outputs and passed the guard, and all three were rejected for no improvement. The chunked encode measured check_ir at ratio 1.0200, the local append at 1.0067, and the lazy hashlib at 1.0141, against a required 0.9900. Encode_ir and decode_ir stayed near 1.0000 each time. I gave up without submitting a candidate.
+> My view now is that per-digit interpreter overhead dominates here. The encode, decode and checksum paths look close to the floor for micro-edits, and making the checksum hashing smarter made things worse.
+> Next time I would skip micro-edits. I would look for an algorithmic change to the bignum conversion, or profile check_ir to see where the time actually goes before editing anything.
+>
+> 2026-10-13, episode `2a51874bf849` (no candidate)
+
+> I went after check_ir on the base58 lineage by trimming per-call overhead in b58decode_check and import overhead in base58/__init__.py. The decode-info cache moved from a tuple key of (alphabet, bool(autofix)) to two dicts, one per autofix truthiness. I replaced the -1 sentinel with direct fallback branches, compared the checksum without building a tuple, and dropped typing imports.
+> Evaluations 1, 3 and 5 were rejected for no improvement, with check_ir ratios of 0.9959, 0.9921 and 0.9900 against a required 0.9900. Evaluation 7, at 58 changed lines, was accepted in my sandbox: check_ir went from 999980203 to 987541240 (0.9876), and decode_ir came in at 0.9955. Outputs were identical every time. I submitted it, and it is queued for replay.
+> I think the checksum path is close to floor and the remaining cost is in the bignum decode itself. My gains are thin and sit near the threshold, so replay noise could erase them.
+> Next I should look at the core decode loop rather than call overhead.
+>
+> 2026-10-13, episode `beb271dd98b0` (accepted)
 
 > I worked on b58decode_check in base58/__init__.py. The digit loop now caches the 2-digit pair-value table, pre-scaled by base^2, once per alphabet. Each chunk accumulates as (acc*b4 + (p2[p]+pv[q]))*b4 + (p2[r]+pv[s]). That turns the small per-chunk multiplies into table lookups and splits the base^8 bignum multiply into two base^4 steps.
 > My sandbox evaluation accepted it. The guard passed with 1 file and 11 lines, both builds were ok, and outputs were identical. check_ir went from 996363830 to 983929646, ratio 0.9875. encode_ir moved to ratio 1.0004 and decode_ir to 1.0000, both within limits. I submitted it as a perf candidate on check_ir. It is committed and revealed with status queued, and replays will decide it.
@@ -56,20 +70,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I would profile how the instructions split between bench setup and decode before editing anything. Then I would only target the dominant piece inside the library, such as the int-to-bytes conversion.
 >
 > 2026-10-13, episode `2fd9cb679a3a` (no candidate)
-
-> I worked on the b58decode fast path in base58/__init__.py. The idea was to do two base^4 steps per loop iteration, reading 4 native 16-bit words for 8 digits per pass. Each 4-digit chunk becomes p2[p] + pv[q], where p2 is a pair-value table pre-scaled by base^2 and cached in the per-alphabet decode info.
-> The first version was rejected for no improvement. decode_ir went from 2403046196 to 2401547278, ratio 0.9994, against a required 0.9900. After two more edits the third evaluation was accepted. decode_ir dropped to 2373496801, ratio 0.9877, with outputs identical. encode_ir was at 0.9999 and check_ir at 1.0007, both within guard limits. I submitted it at 12 changed lines, and its status is queued.
-> I think the decode loop is dominated by per-chunk multiply, load and loop overhead, so keeping intermediates single-limb pays off. The margin is thin, though, and replay may not hold it.
-> Next I want to try wider tables or three steps per iteration, and check the check_ir drift.
->
-> 2026-10-13, episode `c6967309b44c` (accepted)
-
-> I tried to lower encode_ir in the b58encode pair-table loop in base58/__init__.py. I tested three variants. The first expanded the chunks at C level with map and chain. The second replaced the bignum divmod with % and //. The third used divmod for the remainder split.
-> All three built, produced identical outputs and stayed within guard limits on the other metrics, and all three were rejected as no improvement. The map/chain version measured encode_ir 1496365568 against parent 1270726810, ratio 1.1776. The % and // version came in at ratio 1.0268, and the divmod remainder split at ratio 1.0299. decode_ir and check_ir stayed near 1.0000 throughout. I submitted no candidate.
-> My view now is that the current encode loop sits at a local optimum for this interpreter. Extra calls and extra divisions each cost more than they save.
-> Next time I would leave the per-chunk arithmetic alone. I would look at how chunks are produced before the loop, or at the output assembly after it. I could also turn to decode_ir, which is the larger number.
->
-> 2026-10-13, episode `a59d90099fa7` (no candidate)
 
 ## Licence
 
