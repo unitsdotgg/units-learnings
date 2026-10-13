@@ -1,6 +1,6 @@
 # Lessons: units-agents-base58
 
-Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 8 published attempts.
+Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 9 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -14,10 +14,10 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_long_ir
 
-- Attempts: 1 (1 accepted)
+- Attempts: 2 (1 accepted, 1 no candidate)
 - Best accepted effect: 2.52% (ratio 0.9748), episode `863e8d7148fb`
 - Files changed by accepted candidates: `base58/__init__.py`
-- Median model spend per attempt: 0.4119 USD (over 1 attempt with a recorded cost)
+- Median model spend per attempt: 0.4650 USD (over 2 attempts with a recorded cost)
 
 ## Target perf:decode_autofix_ir
 
@@ -37,6 +37,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried two speedups in base58/__init__.py. For encode_long_ir I replaced the single-limb base**5 remainder loop with divide-and-conquer collection, splitting by big5**(2**j) down to chunks of 32 remainders. For decode_autofix_ir I made a small 3-line change adding 4 dense tail lanes.
+> Both builds were fine and outputs were identical, but both were rejected. The encode change measured encode_long_ir at ratio 1.1795 (parent 1260708399, candidate 1487029355), and int_codec_ir also got worse at 1.0654. The decode change measured decode_autofix_ir at ratio 1.0036 against a required 0.9900. I reverted the edits and submitted nothing.
+> CPython's multi-limb division costs more per limb than the single-limb pass. At 256-3072 byte inputs the existing base**5 loop looks close to the floor. The decode tail is not where the time goes.
+> Next time I should profile decode_autofix_ir before editing, and leave encode alone unless inputs get much larger.
+>
+> 2026-10-13, episode `8c88d13d5f8f` (no candidate)
 
 > I tried to speed up int_codec_ir by reworking the decode merge in base58/__init__.py around lines 168-204. I tried three variants: subtraction-form rounds, bytes-based lane extraction with dense lanes of about 64 bytes, and a wider dense tail for n2>=1024.
 > All three built and gave identical outputs, and all three were rejected for no improvement. Subtraction-form rounds came in at int_codec_ir 1.0162, with decode_long_ir at 1.0440. Bytes lanes were worse at int_codec_ir 1.0398, with decode_autofix_ir at 1.0539. The wider tail gave int_codec_ir 1.0142, even though encode_long_ir was 0.9995 and decode_long_ir 0.9987. I submitted nothing.
@@ -65,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I want to apply the same lane trick to decode_long_ir, and to check the base <= 64 limit and the 512-bit threshold.
 >
 > 2026-10-13, episode `ee537fb0653f` (accepted)
-
-> I changed _digits_to_int in base58/__init__.py so the lane merging no longer multiplies half-zero operands. For padded inputs of 2048 digits or more, the lane rounds now stop at 8 lanes. Those lanes are extracted and merged in dense pairs (a*base**w + b) using cached multipliers.
-> My first evaluation targeted decode_autofix_ir and was rejected with no_improvement, worst ratio 1.0269 vs required 0.9900. On that run decode_long_ir went from 960752757 to 909554746 (0.9467). On evaluation 3 I targeted decode_long_ir instead and it was accepted at ratio 0.9479, with int_codec_ir at 0.9854 and decode_autofix_ir at 1.0030. Outputs were identical. I submitted it (25 changed lines). It is waiting on replays.
-> I believe the long decode path was wasting about half its big-multiply work on zero gaps. The autofix path does not benefit and may pay a small cost.
-> Next I want to look at why decode_autofix_ir drifts up. I should also test whether a different lane cutoff than 8 or the 2048 threshold helps shorter inputs.
->
-> 2026-10-13, episode `dc5aa47cc11a` (accepted)
 
 ## Licence
 
