@@ -1,32 +1,46 @@
 # Lessons: minbpe
 
-Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 30 published attempts.
+Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 32 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:encode_ir
 
-- Attempts: 16 (8 accepted, 6 no candidate, 2 rejected)
+- Attempts: 17 (8 accepted, 7 no candidate, 2 rejected)
 - Best accepted effect: 49.08% (ratio 0.5092), episode `6e9f1a0653a3`
 - Accepted effects: 49.08%, 12.53%, 5.56%, 2.88%, 2.64%, 1.65%, 1.32%, 1.15%
 - Why candidates failed: stale_conflict (1), no_improvement (1)
 - Files changed by accepted candidates: `minbpe/__init__.py`, `minbpe/base.py`, `minbpe/basic.py`, `minbpe/gpt4.py`, `minbpe/regex.py`
 - Files changed by rejected candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.4021 USD (over 16 attempts with a recorded cost)
+- Median model spend per attempt: 0.3768 USD (over 17 attempts with a recorded cost)
 
 ## Target perf:train_ir
 
-- Attempts: 14 (11 accepted, 2 rejected, 1 no candidate)
+- Attempts: 15 (12 accepted, 2 rejected, 1 no candidate)
 - Best accepted effect: 39.34% (ratio 0.6066), episode `adb138722447`
-- Accepted effects: 39.34%, 31.91%, 29.62%, 21.50%, 11.24%, 10.99%, 9.11%, 5.27%, 1.89%, 1.72%, 1.68%
+- Accepted effects: 39.34%, 31.91%, 29.62%, 21.50%, 11.24%, 10.99%, 9.11%, 5.27%, 1.89%, 1.72%, 1.68%, 1.29%
 - Why candidates failed: no_improvement (2)
 - Files changed by accepted candidates: `minbpe/basic.py`, `minbpe/regex.py`
 - Files changed by rejected candidates: `minbpe/basic.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.2877 USD (over 14 attempts with a recorded cost)
+- Median model spend per attempt: 0.2556 USD (over 15 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried batch encoding in minbpe/regex.py. In encode_ordinary I joined all new chunks with an unused separator code point and applied the merges in index order with str.replace, instead of calling _encode_chunk per chunk. Later edits to lines 246-269 and 310-325 removed the batch path again.
+> The sandbox evaluation on perf encode_ir was rejected. encode_ir got worse, ratio 1.0168. 7 stable tests failed, all GPT4Tokenizer cases: test_encode_decode_identity on three inputs, test_gpt4_tiktoken_equality on three inputs, and test_gpt4_tiktoken_equality_special_tokens. GPT4Tokenizer overrides _encode_chunk, so bypassing it broke byte shuffling. I reverted. The repository copy is unchanged and no candidate was submitted.
+> The merge loop seems to be a small share of encode_ir. Any change in RegexTokenizer must keep the _encode_chunk hook, because subclasses depend on it.
+> Next, profile encode_ir before editing, to see where the time actually goes. Then target that part and run the GPT4Tokenizer tests first.
+>
+> 2026-10-13, episode `d2be6951ff07` (no candidate)
+
+> I worked on RegexTokenizer.train in minbpe/regex.py. In the per-merge update I dropped the temporary list of added pairs per chunk. Removed and added pair counts now go straight into the delta dict. The where-set update uses one where.get lookup instead of a membership test plus indexing. Chunks with one occurrence of the merged pair, two parts after the split, take a direct path with no loop.
+> The first evaluation, 38 lines, was rejected. train_ir went from 361192982 to 358802598, ratio 0.9934, and the required ratio was 0.9900. That edit alone did not help enough. The second evaluation, 71 lines, was accepted. train_ir went from 361192988 to 356478393, ratio 0.9869. encode_ir rose to 401721415, ratio 1.0048. Outputs were identical. I submitted it, and it is queued for replay.
+> The per-merge bookkeeping in train costs real instructions, and small lookup savings add up only slowly.
+> Next I should check whether the encode_ir rise is noise or comes from shared code, and look for further savings in the merge loop.
+>
+> 2026-10-13, episode `1b82d35e1951` (accepted)
 
 > I worked on train_ir in minbpe/regex.py and made four attempts. The first counted the initial pair stats in C, with each chunk repeated by its count. The second trained on one joined chunk string with a separator, the way BasicTokenizer.train does. The third added a fast path for chunks with exactly one occurrence. The fourth was a 29-line variant.
 > The first measured ratio 1.0402 on train_ir, so it was slower. The second measured 1.1967, much slower, though encode_ir came in at 0.9918. The third changed outputs and failed 3 stable tests, including test_save_load and test_wikipedia_example[RegexTokenizer]. The fourth measured 0.9921 against the required 0.9900. That is close but did not clear it. I submitted nothing.
@@ -48,20 +62,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I want to find which part of evaluation 7 carries the gain. After that, look for per-call overhead in base.py merge lookups.
 >
 > 2026-10-13, episode `0837e5346eae` (accepted)
-
-> I changed RegexTokenizer.train in minbpe/regex.py. On each merge, pair count changes from all affected chunks now go into one per-pair delta dict. Removed pairs are written to it directly, with no per-chunk list. The delta is applied to stats in one pass. A heap entry is pushed only for pairs whose count changed. Stale entries stay valid in the lazy heap.
-> The first evaluation was rejected. train_ir went from 373345283 to 369765330, ratio 0.9904 against a required 0.9900. That was not enough. After the further edits, evaluation 3 was accepted. train_ir went from 373345289 to 366288299, ratio 0.9811. encode_ir ratio was 0.9995. Outputs were identical. The guard passed on 1 file, 46 lines.
-> I now think the per-merge update loop is where train spends its time. Batching the deltas helped more than trimming the list walk alone. The candidate is submitted and queued for replay.
-> Next I will look at the chunk lookup for each merge, and at whether encode can reuse the same delta idea.
->
-> 2026-10-13, episode `8e640468cd39` (accepted)
-
-> I changed RegexTokenizer.encode in minbpe/regex.py so that special tokens no longer build and compile an alternation regex on every call. When all special tokens are non-empty strings, the text is split with str.find. The leftmost occurrence wins, and at equal positions the first listed token wins. I also edited the encode path in minbpe/basic.py.
-> Evaluation 1 was rejected. encode_ir went from 410004018 to 408076012, ratio 0.9953 against a required 0.9900. Evaluation 3 was also rejected, at ratio 0.9950. Evaluation 5 touched both files, 60 lines, and was accepted. encode_ir went from 409947466 to 405643035, ratio 0.9895. train_ir rose to ratio 1.0056. Outputs were identical in every run.
-> The regex.py change alone did not clear the threshold. The basic.py change was needed. The gain is small and close to the limit.
-> Wait for the replay verdict. Then look at why train_ir rose about half a percent, and at other per-call overhead in encode_ordinary.
->
-> 2026-10-13, episode `5f4205331ca2` (rejected)
 
 ## Licence
 
