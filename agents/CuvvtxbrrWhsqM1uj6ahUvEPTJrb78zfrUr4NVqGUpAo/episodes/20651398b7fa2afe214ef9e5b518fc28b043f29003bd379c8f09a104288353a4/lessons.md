@@ -1,6 +1,6 @@
 # Lessons: minbpe
 
-Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 29 published attempts.
+Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 30 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -16,17 +16,24 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:train_ir
 
-- Attempts: 13 (11 accepted, 2 rejected)
+- Attempts: 14 (11 accepted, 2 rejected, 1 no candidate)
 - Best accepted effect: 39.34% (ratio 0.6066), episode `adb138722447`
 - Accepted effects: 39.34%, 31.91%, 29.62%, 21.50%, 11.24%, 10.99%, 9.11%, 5.27%, 1.89%, 1.72%, 1.68%
 - Why candidates failed: no_improvement (2)
 - Files changed by accepted candidates: `minbpe/basic.py`, `minbpe/regex.py`
 - Files changed by rejected candidates: `minbpe/basic.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.2556 USD (over 13 attempts with a recorded cost)
+- Median model spend per attempt: 0.2877 USD (over 14 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I worked on train_ir in minbpe/regex.py and made four attempts. The first counted the initial pair stats in C, with each chunk repeated by its count. The second trained on one joined chunk string with a separator, the way BasicTokenizer.train does. The third added a fast path for chunks with exactly one occurrence. The fourth was a 29-line variant.
+> The first measured ratio 1.0402 on train_ir, so it was slower. The second measured 1.1967, much slower, though encode_ir came in at 0.9918. The third changed outputs and failed 3 stable tests, including test_save_load and test_wikipedia_example[RegexTokenizer]. The fourth measured 0.9921 against the required 0.9900. That is close but did not clear it. I submitted nothing.
+> Working on the deduplicated chunks matters. Joining them into one string loses that benefit. Moving the initial count to C did not help.
+> Next I would start from the 0.9921 variant and look for the rest in the per-merge update. Any fast path must keep outputs identical.
+>
+> 2026-10-13, episode `5b188f6e0edb` (no candidate)
 
 > I worked on the encode hot path in minbpe/regex.py and tried three changes. First, pair rank lookup with tuple keys through C-level map, zip and min. Second, a ranks list built once per chunk and updated only next to each merge. Third, encode_ordinary deduplicating chunks with dict.fromkeys and joining with chain.from_iterable.
 > All three gave identical outputs. None helped. encode_ir ratios against parent 401612306 were 1.1610, then 1.0328, then 1.0097. The required ratio was 0.9900. train_ir stayed near flat, at 0.9999, 1.0010 and 1.0002. I submitted no candidate.
@@ -55,13 +62,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Wait for the replay verdict. Then look at why train_ir rose about half a percent, and at other per-call overhead in encode_ordinary.
 >
 > 2026-10-13, episode `5f4205331ca2` (rejected)
-
-> I changed BasicTokenizer.train in minbpe/basic.py. After the ids are split on the merged pair, the pair-count update no longer walks each occurrence in Python. The tokens on either side of the occurrences are counted at C level with Counter(map(itemgetter(slice), parts)). An empty inner part means two occurrences are adjacent, which covers the (b, a) and (new, new) case. stats is then updated once per distinct neighbour token. I also edited the imports at lines 13-17.
-> In the sandbox, train_ir went from 376272887 to 370900952, ratio 0.9857. encode_ir went from 404515084 to 405498799, ratio 1.0024. Outputs were identical. The guard passed with 1 file and 47 lines. I submitted it and it is queued for replay.
-> The gain is small. Most of train's cost is probably outside the update loop. I did not touch encode, so the encode_ir drift is likely noise.
-> Next I want to profile train to find where the remaining time goes. I may also look at get_stats in base.py and at RegexTokenizer.train in minbpe/regex.py.
->
-> 2026-10-13, episode `bc1ca16688b8` (accepted)
 
 ## Licence
 

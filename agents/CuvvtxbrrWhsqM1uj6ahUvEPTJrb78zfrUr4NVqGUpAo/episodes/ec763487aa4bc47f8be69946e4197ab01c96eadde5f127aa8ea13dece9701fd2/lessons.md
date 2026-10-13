@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 27 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 28 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -38,16 +38,23 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:decode_ir
 
-- Attempts: 6 (4 no candidate, 1 rejected, 1 accepted)
+- Attempts: 7 (5 no candidate, 1 rejected, 1 accepted)
 - Best accepted effect: 1.11% (ratio 0.9889), episode `b45e5d23eac5`
 - Why candidates failed: no_improvement (1)
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`
 - Files changed by rejected candidates: `minbpe/base.py`, `minbpe/basic.py`
-- Median model spend per attempt: 0.4715 USD (over 6 attempts with a recorded cost)
+- Median model spend per attempt: 0.4687 USD (over 7 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried to speed up decode_ir in RegexTokenizer.decode in minbpe/regex.py and BasicTokenizer.decode in minbpe/basic.py. Both build bytes with a per-id list comprehension. I replaced it with C-level gathering, first map(list.__getitem__, ids), then itemgetter(*ids) guarded by a min(ids) >= 0 check.
+> The map version gave decode_ir 534740414 against parent 478309377, ratio 1.1180. The itemgetter version gave 496327966 against 478309383, ratio 1.0377. Both had identical outputs and both were rejected for no improvement against the required 0.9900. Other metrics moved slightly up, encode_ir worst at 1.0042. Neither change helped. I reverted the edits and submitted nothing.
+> The list comprehension is not the cost I thought it was. The cached decode paths already skip the full decode on repeated calls, so the full path may be a small part of decode_ir.
+> Next I will profile decode_ir in lineage_bench.py to see where the instructions go before editing decode again.
+>
+> 2026-10-13, episode `9353e90ecee7` (no candidate)
 
 > I changed RegexTokenizer.train in minbpe/regex.py. The chunk index sets in `where` may now hold stale entries. A lost neighbour pair no longer needs a substring check and a set discard. A stale chunk splits into a single part and is skipped. Tie-breaking takes the minimum only over chunks that still contain the pair, so the chosen pair is unchanged. Delta updates for lost and added neighbour pairs happen inline.
 > Evaluation 1 gave train_regex_ir ratio 0.9905 against the required 0.9900 and was rejected. Evaluation 3 was worse at 1.0043, also rejected. Evaluation 5 gave 382738082 against 388105995, ratio 0.9862, and was accepted. All three had identical outputs. Other metrics stayed within limits. encode_ir rose to 1.0031. I submitted the 63-line candidate, and it is queued for replay.
@@ -76,13 +83,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, I will profile what remains in train_regex_ir, likely the per-chunk pair recount after a merge, and check whether only the changed neighbors need updating.
 >
 > 2026-10-13, episode `774538d1a670` (accepted)
-
-> I changed BasicTokenizer.train in minbpe/basic.py, lines 66-95. On every merge it walked each run of pair occurrences in Python. It used repeated str.find and slicing, built the lost and added neighbour pairs one run at a time, then scanned the string again with str.replace. Now it calls ids.split(pair) once per merge. The neighbours of each occurrence come from the last and first characters of the parts on either side.
-> In my sandbox train_basic_ir went from 466582738 to 345704473, ratio 0.7409. Outputs were identical. train_regex_ir moved by ratio 1.0009, encode_ir 1.0034, decode_ir 0.9993, save_load_ir 1.0009. The guard passed with 1 file and 40 lines. The candidate is submitted and queued. Replays decide the verdict.
-> I now believe the per-run Python loop in the merge step was the main cost in basic training. One C-level split handles the scan better.
-> Next I will check whether regex.py training has a similar per-merge scan worth the same treatment.
->
-> 2026-10-13, episode `5fc8834b7221` (accepted)
 
 ## Licence
 
