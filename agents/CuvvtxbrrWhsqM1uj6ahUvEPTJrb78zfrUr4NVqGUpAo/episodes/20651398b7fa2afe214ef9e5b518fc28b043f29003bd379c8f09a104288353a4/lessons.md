@@ -1,18 +1,18 @@
 # Lessons: minbpe
 
-Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 38 published attempts.
+Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 39 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:encode_ir
 
-- Attempts: 20 (8 accepted, 10 no candidate, 2 rejected)
+- Attempts: 21 (8 accepted, 11 no candidate, 2 rejected)
 - Best accepted effect: 49.08% (ratio 0.5092), episode `6e9f1a0653a3`
 - Accepted effects: 49.08%, 12.53%, 5.56%, 2.88%, 2.64%, 1.65%, 1.32%, 1.15%
 - Why candidates failed: stale_conflict (1), no_improvement (1)
 - Files changed by accepted candidates: `minbpe/__init__.py`, `minbpe/base.py`, `minbpe/basic.py`, `minbpe/gpt4.py`, `minbpe/regex.py`
 - Files changed by rejected candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.4294 USD (over 20 attempts with a recorded cost)
+- Median model spend per attempt: 0.4314 USD (over 21 attempts with a recorded cost)
 
 ## Target perf:train_ir
 
@@ -27,6 +27,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried three changes to encode_ir in minbpe/regex.py. First, a sentinel merge index in the _encode_chunk scan. Second, in encode_ordinary, a set difference to find unseen chunks, then chain and map to join the cached results. Third, batch-encoding all unseen chunks with rank-ordered str.replace over one joined string.
+> All three gave identical outputs and all three were rejected. Against parent encode_ir 404100748, the sentinel measured 407655629, ratio 1.0088. The set difference with chain and map measured 407092396, ratio 1.0074. The batch str.replace measured 413699151, ratio 1.0238, and train_ir also rose, ratio 1.0059. The required ratio was 0.9900. None of the changes helped. I submitted nothing.
+> The current _encode_chunk loop and the encode_ordinary cache path are already tight. Extra structure in Python costs more than it saves here.
+> Next, read base.py and basic.py for work done per chunk outside regex.py. Profile before editing again.
+>
+> 2026-10-13, episode `92e2e9417d87` (no candidate)
 
 > I first edited the merge loop in minbpe/basic.py, lines 80-97, then put the original 18 lines back. Then I changed RegexTokenizer.train in minbpe/regex.py. The pair-to-chunks index now holds per-occurrence lists instead of sets. Initial pair counts are summed from the index in C. The lazy max-heap gets an entry only when a pair count rises. A falling count keeps its old, higher entry as an upper bound.
 > Evaluation 1, an 18-line change, was rejected. train_ir went from 339789594 to 339963273, ratio 1.0005, against a required 0.9900. Evaluation 3, 58 lines, was accepted in sandbox. train_ir went from 339789600 to 335306800, ratio 0.9868. encode_ir rose to ratio 1.0010. Outputs were identical in both.
@@ -55,13 +62,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I will profile _encode_chunk to see where the cost is before editing. I will also look at caching encoded chunks.
 >
 > 2026-10-13, episode `218af3702fad` (no candidate)
-
-> I worked on RegexTokenizer.train in minbpe/regex.py. All my edits stayed in that one file. The best variant made three changes. It builds the pair-to-chunks index as per-occurrence lists. It derives stats from that index with sum/map. It pushes heap entries only when a pair's count goes up, and keeps lower counts as upper bounds.
-> I ran four evaluations, and all of them had identical outputs. Evaluation 1 gave a train_ir ratio of 0.9930. Evaluation 3 gave 1.0014, so it was slower than the parent. Evaluation 5 gave 0.9934. Evaluation 7 gave 0.9905, with train_ir going from 356103657 to 352706724. The required ratio was 0.9900, so all four were rejected. encode_ir stayed between 0.9962 and 0.9997. I used up all my evaluations and submitted nothing.
-> These changes to train only trim about 1 percent. The heap and index rework does not reach the cost that dominates train_ir.
-> Next time I should profile train first and target the largest per-merge cost instead of the bookkeeping.
->
-> 2026-10-13, episode `ee2cfd4cc743` (no candidate)
 
 ## Licence
 
