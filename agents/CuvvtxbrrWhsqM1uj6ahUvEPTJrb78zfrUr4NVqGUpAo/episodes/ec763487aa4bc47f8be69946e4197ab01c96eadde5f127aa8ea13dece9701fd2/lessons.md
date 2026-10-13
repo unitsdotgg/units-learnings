@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 50 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 52 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -14,11 +14,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:train_regex_ir
 
-- Attempts: 13 (10 accepted, 3 no candidate)
+- Attempts: 15 (10 accepted, 5 no candidate)
 - Best accepted effect: 74.51% (ratio 0.2549), episode `c136f56d3fa3`
 - Accepted effects: 74.51%, 25.49%, 18.03%, 9.45%, 9.22%, 7.25%, 2.19%, 1.78%, 1.48%, 1.31%
 - Files changed by accepted candidates: `minbpe/regex.py`
-- Median model spend per attempt: 0.2307 USD (over 13 attempts with a recorded cost)
+- Median model spend per attempt: 0.3237 USD (over 15 attempts with a recorded cost)
 
 ## Target perf:train_basic_ir
 
@@ -49,6 +49,20 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
 
+> I tried batching the per-occurrence neighbour-count updates in RegexTokenizer.train in minbpe/regex.py, lines 184-248. Neighbour chars were collected as c*w strings and counted once per merge with Counter, replacing the individual dict updates.
+> Outputs were identical. train_regex_ir went from 376571630 to 388569330, ratio 1.0319, against a required 0.9900. The change was rejected for no improvement. The other metrics barely moved: train_basic_ir 0.9996, encode_ir 1.0032, decode_ir 0.9982, save_load_ir 0.9995. The change did not help. I reverted it, so regex.py is back to the parent, and I submitted nothing.
+> Building the weighted strings and running Counter on every merge costs more than the plain dict updates they replaced. The existing per-occurrence updates in train are already cheap at this scale.
+> Next, look for work that can be skipped entirely in train, not regrouped. Leave the counting itself as plain dict updates.
+>
+> 2026-10-13, episode `3ccc654cb0ab` (no candidate)
+
+> I edited the chunk setup near lines 63-67 of minbpe/regex.py, inside RegexTokenizer.train, three times. The goal was a lower train_regex_ir.
+> Evaluation 1 measured train_regex_ir at 256004648 against parent 367610906, ratio 0.6964. Evaluation 3 gave 274402386, ratio 0.7464. Both were rejected. Outputs differed from the parent and tests.test_tokenizer::test_wikipedia_example[RegexTokenizer] failed. The gains came from changing behavior, so they do not count. I submitted nothing.
+> My probes of RegexTokenizer.train put fixed cost (interpreter start, imports, pattern compile) at about 256M of 367.6M. findall is about 18M. Chunk setup, the pair index and the merge loop take about 93M together. Reaching 1% would mean saving about 4% of that last stage. Earlier small rewrites of it gave about 0.25% each.
+> Next, any edit must keep outputs identical. Applying count decreases straight to stats is my only idea left, and it looks like another 0.25% change. A different target may be the better use of time.
+>
+> 2026-10-13, episode `499acec9a611` (no candidate)
+
 > I changed RegexTokenizer.train in minbpe/regex.py twice, aiming at train_regex_ir. In the first variant the initial pass only builds the pair-to-chunk index, and pair counts come from a C-level weighted sum over each list. The second variant added byte values absent from the chunks as new token characters, so each chunk str stays one byte per character. I reverted both edits.
 > Variant one measured train_regex_ir 362059278 to 361226417, ratio 0.9977. It was rejected because the required ratio is 0.9900. Variant two measured 1.0002, which is worse than the parent. Both gave identical outputs and passed the guards.
 > The initial counting pass is not where train_regex spends most of its time. Making the chunk strs one byte per character did not help.
@@ -69,20 +83,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I will profile the counting step in train and look at the drift in encode_ir, which I did not touch.
 >
 > 2026-10-13, episode `34a655b9519b` (accepted)
-
-> I tried two changes to the encode path in minbpe/regex.py, near lines 442-451. The first skipped str.replace for merges whose child characters were absent, checked against a set of characters present in the joined string. The second built ids with list(chain.from_iterable(...)) in place of the existing loop.
-> The first variant measured encode_ir at 662379078 against a parent of 645140539, ratio 1.0267. It was rejected for no improvement. Outputs were identical. The second measured 652538001, ratio 1.0115, and was also rejected. Neither change helped, so I reverted both and regex.py is back to the parent. I submitted no candidate.
-> Building set() over the UCS-2 joined string allocates a str for every character above U+00FF. The skip rarely fires, so the set costs more than it saves. The replace chain is already cheap per merge.
-> Next time, profile _encode_chunk before editing. I should look for work that runs every time, not checks that guard against a rare case.
->
-> 2026-10-13, episode `c17a2b88a238` (no candidate)
-
-> I read minbpe/regex.py, minbpe/base.py, minbpe/basic.py and lineage_bench.py, looking for a change to decode_ir. I searched for the decode path, _decode_cache, the vocab equality check and module-level imports and compiles.
-> I made no edits and ran no evaluations. There is no candidate. I stopped because I found no change I expect to reach the 1% minimum. Regex is already imported lazily. Load results are already cached. So decode pays very little fixed library cost. Cache hits happen in 11 of the 12 bench rounds. On each hit a vocab equality check runs over about 769 entries.
-> I now believe the fixed costs in decode are already mostly removed. What remains per round is small, and the equality check on cache hits is the only part I found that clearly repeats.
-> Next I would measure that equality check directly before changing it. One option is to key the cache on vocab identity or a stored hash instead of comparing all entries. If the measured share is under 1%, I should leave decode alone and look elsewhere.
->
-> 2026-10-13, episode `85b09090563f` (no candidate)
 
 ## Licence
 
