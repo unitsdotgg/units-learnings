@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 7 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 9 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -22,10 +22,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:train_basic_ir
 
-- Attempts: 1 (1 accepted)
-- Best accepted effect: 26.07% (ratio 0.7393), episode `6edc77f9a9b3`
+- Attempts: 2 (2 accepted)
+- Best accepted effect: 59.45% (ratio 0.4055), episode `bab37e70b75e`
+- Accepted effects: 59.45%, 26.07%
 - Files changed by accepted candidates: `minbpe/basic.py`
-- Median model spend per attempt: 0.1316 USD (over 1 attempt with a recorded cost)
+- Median model spend per attempt: 0.1851 USD (over 2 attempts with a recorded cost)
 
 ## Target perf:encode_ir
 
@@ -34,9 +35,28 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 - Files changed by accepted candidates: `minbpe/regex.py`
 - Median model spend per attempt: 0.1430 USD (over 1 attempt with a recorded cost)
 
+## Target perf:decode_ir
+
+- Attempts: 1 (1 no candidate)
+- Median model spend per attempt: 0.2825 USD (over 1 attempt with a recorded cost)
+
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried to cut decode_ir on minbpe-heavy. The decode paths already cache their results, so the only real work left is the first list-comprehension pass over each 100k-id list. In minbpe/regex.py and minbpe/basic.py I replaced that pass with a min() check plus b"".join(map(lookup.__getitem__, ids)).
+> Outputs were identical and guards were ok, 2 files, 12 lines. decode_ir went from 513195468 to 569549027, ratio 1.1098 against a required 0.9900. The change did not help. It was rejected for no improvement. The other metrics barely moved: train_regex_ir 0.9989, encode_ir 1.0015. I reverted both edits and submitted nothing.
+> I now believe CPython's specialised list comprehension is already cheaper than a C map that goes through a method-wrapper. The decode loop is close to its floor in pure Python.
+> Next I would look at whether the per-call lookup construction in decode costs anything, or I would move to a different metric.
+>
+> 2026-10-13, episode `0e7dd78e6982` (no candidate)
+
+> I changed BasicTokenizer.train in minbpe/basic.py, lines 35-51, plus one line at line 13. Before the change it recounted every adjacent pair of the whole sequence on each merge. Now the counts are built once, keyed by the two-character string. After each merge only the pairs touched by that merge are updated. Runs of non-overlapping occurrences are found with str.find, scanning left to right the same way str.replace does.
+> My sandbox evaluation was accepted, with identical outputs. train_basic_ir went from 2102615613 to 861430062, ratio 0.4097. The other metrics barely moved: train_regex_ir 1.0007, encode_ir 1.0006, decode_ir 1.0030, save_load_ir 1.0031. The guard passed on 1 file, 39 lines. This is my measurement only. Replays decide the verdict.
+> I now think the full recount per merge was the main cost in basic training.
+> Next, I want to try the same incremental counting in the regex tokenizer's train, which this change did not touch.
+>
+> 2026-10-13, episode `bab37e70b75e` (accepted)
 
 > I changed minbpe/regex.py so RegexTokenizer no longer pays for the regex module or its compiled split pattern when only save and load run. The first version, 15 lines, made compiled_pattern lazy. The second, 26 lines, also replaced the top-level import of regex with a module-level proxy that swaps in the real module on first attribute access.
 > Evaluation 1 was rejected. save_load_ir went from 595561313 to 590721747, ratio 0.9919 against a required 0.9900. Lazy compile alone did not help enough. Evaluation 3 was accepted. save_load_ir was 521722445, ratio 0.8760. decode_ir was 0.8605 and train_basic_ir was 0.9601. encode_ir rose to ratio 1.0023, within guard limits. Outputs were identical. I submitted it, and replays will decide.
@@ -58,20 +78,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, check whether a cache kept across calls helps encode_ir more. Also look at the merge loop inside _encode_chunk itself.
 >
 > 2026-10-13, episode `243c8fbffbb4` (accepted)
-
-> I rewrote RegexTokenizer.train in minbpe/regex.py, replacing lines 49-104 (56 lines) with 30 lines, plus a one-line edit at line 83. Each distinct chunk is now a str with one character per token id, built by decoding the UTF-8 bytes as latin-1. Each merge is one str.replace of the two-character pair with chr(idx), instead of the Python loop that rebuilt lists. str.replace scans left to right without overlapping matches, as the old loop did.
-> My sandbox run on train_regex_ir was accepted with identical outputs. train_regex_ir went from 2656988362 to 2471026230, ratio 0.9300. The other metrics barely moved: train_basic_ir 0.9994, encode_ir 0.9990, decode_ir 0.9973, save_load_ir 0.9970. Guard ok, 1 file, 48 lines. Status is waiting on independent replays.
-> I now believe the per-element merge loop was the main cost in regex training, and str.replace is a faithful substitute.
-> Next I would look at encode in regex.py with the same str approach, since encode_ir did not change.
->
-> 2026-10-13, episode `ba69a0746950` (accepted)
-
-> I changed BasicTokenizer.train in minbpe/basic.py, lines 29-69, 41 lines replaced by 23. The working token sequence is now a str with one character per token id, built by decoding the bytes as latin-1. Each merge is one str.replace of the two-character pair with chr(idx). Before, a Python loop rebuilt a list on every merge. str.replace scans left to right without overlapping matches, the same as the old loop.
-> In my sandbox the guard passed, both builds were ok and outputs were identical. train_basic_ir went from 2953795741 to 2151691175, ratio 0.7284. train_regex_ir was 0.9996, encode_ir 0.9999, decode_ir 0.9984, save_load_ir 0.9977. The other metrics did not move in any way that matters. The candidate is submitted and waiting for replays.
-> The merge loop was the main cost in basic training. Pair counting still uses Counter and is probably what costs most now.
-> Next, check whether pair counting in train can be done over the str directly. Also look at whether the regex tokenizer's merge step can use the same trick.
->
-> 2026-10-13, episode `6edc77f9a9b3` (accepted)
 
 ## Licence
 

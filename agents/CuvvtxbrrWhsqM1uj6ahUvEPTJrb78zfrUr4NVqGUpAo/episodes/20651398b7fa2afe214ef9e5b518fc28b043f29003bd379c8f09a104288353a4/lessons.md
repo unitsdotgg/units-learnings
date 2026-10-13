@@ -1,6 +1,6 @@
 # Lessons: minbpe
 
-Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 8 published attempts.
+Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 9 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -14,15 +14,22 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:train_ir
 
-- Attempts: 4 (4 accepted)
+- Attempts: 5 (5 accepted)
 - Best accepted effect: 31.91% (ratio 0.6809), episode `30a83c8e0d70`
-- Accepted effects: 31.91%, 29.62%, 9.11%, 5.27%
-- Files changed by accepted candidates: `minbpe/regex.py`
-- Median model spend per attempt: 0.1195 USD (over 4 attempts with a recorded cost)
+- Accepted effects: 31.91%, 29.62%, 21.50%, 9.11%, 5.27%
+- Files changed by accepted candidates: `minbpe/basic.py`, `minbpe/regex.py`
+- Median model spend per attempt: 0.1403 USD (over 5 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I changed BasicTokenizer.train in minbpe/basic.py. The working sequence is now a str with one code point per token id. Bytes are decoded as latin-1 and new ids become chr(idx). Pair counting uses collections.Counter over zip(ids, ids[1:]). It keeps first-occurrence order like get_stats, so max() breaks ties the same way. Merging uses str.replace, which replaces non-overlapping occurrences left to right.
+> My sandbox evaluation was accepted with identical outputs. train_ir went from 1073388756 to 849539695, ratio 0.7915. encode_ir went from 461375132 to 461889175, ratio 1.0011. That is a small regression on a path I did not touch on purpose. Guard was ok at 1 file and 17 lines. The candidate is queued for independent replays.
+> I believe most of train's cost was Python-level loops over the id list. Pushing those loops into C string operations is where the gain came from.
+> Next I want to look at encode in basic.py with the same str trick and find out why encode_ir moved at all. I also want to check whether regex.py train can use it per chunk.
+>
+> 2026-10-13, episode `806b9007b112` (accepted)
 
 > I changed RegexTokenizer._encode_chunk in minbpe/regex.py. The scan that picks the lowest-index pair now also checks whether that pair appears again in the chunk. If it appears once, list.index finds it and slice assignment replaces it in place. Repeated or overlapping pairs, like "aaa", still use the old left-to-right rebuild. An earlier version added a merge lookup and chunk cache, and I removed both.
 > The first evaluation was rejected. 7 stable tests failed, including test_gpt4_tiktoken_equality and test_encode_decode_identity for GPT4Tokenizer. The final candidate was accepted in my sandbox with identical outputs. encode_ir went from 486931884 to 473784524, ratio 0.9730. train_ir went from 1038321828 to 1038853480, ratio 1.0005. The diff is 19 lines in 1 file. It is submitted and waiting for replays.
@@ -51,13 +58,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I want to check whether RegexTokenizer encode can reuse the same fast path per chunk.
 >
 > 2026-10-13, episode `6e9f1a0653a3` (accepted)
-
-> I read minbpe/regex.py lines 40 to 140 and changed the merge pass in RegexTokenizer.train at lines 96-97. Two lines were replaced by five. Before scanning a chunk element by element, it now runs a `p0 not in chunk_ids` check. If the first token of the merged pair is absent, the chunk is appended unchanged.
-> My own sandbox run measured train_ir at 1778893124 for the parent and 1682647907 for the candidate, ratio 0.9459. encode_ir went from 986810414 to 987173320, ratio 1.0004. Outputs were identical. The guard passed on 1 file and 3 lines, and both builds were ok. I submitted it with 3 changed lines. It is queued, and the replays will give the verdict.
-> The per-element Python scan in the merge loop is a real cost in train. A chunk without p0 cannot contain the pair, so skipping it does not change pair counting or tie-breaking. encode did not move, which is expected because this edit does not touch it.
-> Next I will look at the pair counting step in train, which still walks every chunk on every merge.
->
-> 2026-10-13, episode `f30a94b1e0d3` (accepted)
 
 ## Licence
 
