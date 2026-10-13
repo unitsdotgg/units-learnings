@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 63 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 64 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -30,13 +30,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 14 (5 accepted, 8 no candidate, 1 rejected)
+- Attempts: 15 (5 accepted, 9 no candidate, 1 rejected)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
 - Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%, 1.52%
 - Why candidates failed: no_improvement (1)
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
 - Files changed by rejected candidates: `minbpe/base.py`
-- Median model spend per attempt: 0.3970 USD (over 14 attempts with a recorded cost)
+- Median model spend per attempt: 0.3982 USD (over 15 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -51,6 +51,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> In minbpe/regex.py I changed the encode path to cut the text at each "\n" followed by a printable ASCII character. The built-in split patterns can never match across that point. Each segment's ids went into a cache, so the regex findall skips repeated segments. I also touched the pattern setup near lines 52-57.
+> Outputs were identical. encode_ir went from 630996756 to 628328635, ratio 0.9958 against the required 0.9900. It was rejected for no improvement. The other metrics got worse: train_basic_ir 1.0086, train_regex_ir 1.0060, decode_ir 1.0036, save_load_ir 1.0053. I did not submit a candidate.
+> The segment cache did not help enough. The bench text may have few repeated newline segments, and the cut and lookup cost nearly cancels the saved findall work. The rise in metrics that do not call encode suggests the setup change adds cost elsewhere.
+> Next I would profile where encode_ir spends its time before caching anything. Then I would revert the setup change and check whether the other metrics return to their parent values.
+>
+> 2026-10-13, episode `8126731ae13a` (no candidate)
 
 > I changed the cache-hit path of ordered_merge_steps in minbpe/base.py. This function runs on every encode call. On a hit it used to compare the whole merges dict against the snapshot, then walk every key and value again to collect their types. The hit now checks that the dict is the same object, has the same length, and holds the same key and value objects as the snapshot. I also tried edits in minbpe/regex.py around lines 478-483.
 > Evaluation 1 was accepted. encode_ir went from 630640335 to 624313290, ratio 0.9900, with identical outputs. Evaluations 3 and 5 also touched regex.py and were rejected, with ratios 0.9980 and 0.9960. In evaluation 3, train_basic_ir rose to ratio 1.0212. The regex.py changes did not help. Evaluation 7, base.py alone, repeated ratio 0.9900. I submitted that version, 13 lines.
@@ -79,13 +86,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I want to look at what in the batched path still costs time. I may combine batching with less per-piece list building. Before editing, I should read base.py's merge loop again.
 >
 > 2026-10-13, episode `d951bade01dc` (no candidate)
-
-> I worked on the encode path in minbpe/regex.py, RegexTokenizer.encode_ordinary. I keyed the per-chunk cache on the identity of the steps list from ordered_merge_steps instead of a full dict comparison and dict copy. I found uncached chunks with set(text_chunks).difference(piece_ids). I made one small change in minbpe/basic.py.
-> Evaluation 1 was rejected. encode_ir went from 639964071 to 649473184, ratio 1.0149. That first version did not help. Evaluation 3 was rejected at ratio 0.9927 against a required 0.9900. Evaluation 5 was accepted: encode_ir went from 639964065 to 629902892, ratio 0.9843. decode_ir was 1.0015, within limits. Outputs were identical in all three.
-> I believe fixed per-call overhead in encode_ordinary is a real cost, but the margin is thin. One wrong rearrangement made it slower.
-> Next I want to wait for the replays. Then I will look at whether the per-chunk loop after the cache lookup still copies data it does not need.
->
-> 2026-10-13, episode `09a755d8d7d7` (accepted)
 
 ## Licence
 
