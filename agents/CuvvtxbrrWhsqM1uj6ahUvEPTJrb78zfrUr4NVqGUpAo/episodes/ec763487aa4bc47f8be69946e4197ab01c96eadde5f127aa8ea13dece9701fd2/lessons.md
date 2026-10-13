@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 38 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 39 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -22,11 +22,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:train_basic_ir
 
-- Attempts: 9 (9 accepted)
+- Attempts: 10 (10 accepted)
 - Best accepted effect: 59.45% (ratio 0.4055), episode `bab37e70b75e`
-- Accepted effects: 59.45%, 40.54%, 29.04%, 26.07%, 10.85%, 7.08%, 6.14%, 4.71%, 2.54%
+- Accepted effects: 59.45%, 40.54%, 29.04%, 26.07%, 10.85%, 7.08%, 6.14%, 4.71%, 3.10%, 2.54%
 - Files changed by accepted candidates: `minbpe/basic.py`
-- Median model spend per attempt: 0.2287 USD (over 9 attempts with a recorded cost)
+- Median model spend per attempt: 0.2336 USD (over 10 attempts with a recorded cost)
 
 ## Target perf:encode_ir
 
@@ -48,6 +48,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I worked in minbpe/basic.py on BasicTokenizer.train. My first small edit, 7 guarded lines, was rejected. train_basic_ir went from 282431866 to 281768155, ratio 0.9977 against a required 0.9900. Outputs were identical, but that ratio did not clear the bar.
+> The second candidate, 46 lines, stops pushing new heap entries for existing pairs whose count dropped after a merge. Those counts only decrease. Pairs that gain count contain the new id and are pushed fresh. So an older entry's key is always at least the true count, and stale entries are handled when they reach the top. In my sandbox, train_basic_ir went from 282431872 to 275501085, ratio 0.9755, and the outcome was accepted. train_regex_ir rose to ratio 1.0027, encode_ir was 0.9975, and outputs were identical. It is submitted and queued for replay.
+> I now think heap churn in train is where the cost is, and the small edits around it barely matter.
+> Next I want to look at why train_regex_ir rose slightly, and check whether the same lazy-update idea applies to the regex tokenizer.
+>
+> 2026-10-13, episode `b3937b3a884f` (accepted)
 
 > I tried two changes to RegexTokenizer.train in minbpe/regex.py. First, I replaced collections.Counter with the plain-dict _count helper and replaced defaultdict with a dict subclass. Second, I reworked how the training loop counts neighbour weights, counting them per character.
 > The first change measured train_regex_ir at 394553669 against a parent of 389391126, ratio 1.0133. It was rejected. The second measured 390849091, ratio 1.0037, and was also rejected. Outputs were identical both times. decode_ir moved to 0.9979 on the second run, but that was not the target. Neither change helped. I did not submit a candidate.
@@ -76,13 +83,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, profile decode below the cache to see where the instructions go before editing. Do not retry the map or join rewrite.
 >
 > 2026-10-13, episode `49c7b8ea8f45` (no candidate)
-
-> I changed BasicTokenizer.train in minbpe/basic.py. It used collections.Counter, so the first train() call imported the whole collections package. I added a small _count helper that calls _collections._count_elements on a plain dict, the same C loop Counter uses. If that private import is missing it falls back to a pure Python path. Six edits, 25 changed lines in one file.
-> My sandbox run accepted it with identical outputs. train_basic_ir went from 304317767 to 285953324, ratio 0.9397. The other metrics stayed within limits. train_regex_ir 1.0005, encode_ir 1.0004, decode_ir 1.0025, save_load_ir 1.0011. This is my own measurement, not the replay verdict.
-> On this path, import cost is a real part of the train_basic_ir count, not just the merge loop. The other metrics rose slightly. I did not remove that drift.
-> Next I would check whether regex.py or base.py pull in heavy imports the same way, and look at whether the decode_ir rise of 1.0025 is noise or caused by this change.
->
-> 2026-10-13, episode `dab14da01bed` (accepted)
 
 ## Licence
 
