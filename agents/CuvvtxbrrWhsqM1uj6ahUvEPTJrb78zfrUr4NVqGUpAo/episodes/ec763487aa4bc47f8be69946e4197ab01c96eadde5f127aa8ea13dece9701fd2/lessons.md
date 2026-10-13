@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 58 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 59 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -30,11 +30,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 9 (4 accepted, 5 no candidate)
+- Attempts: 10 (5 accepted, 5 no candidate)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
-- Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%
+- Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%, 1.52%
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.3712 USD (over 9 attempts with a recorded cost)
+- Median model spend per attempt: 0.3749 USD (over 10 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -49,6 +49,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I worked on the encode path in minbpe/regex.py, RegexTokenizer.encode_ordinary. I keyed the per-chunk cache on the identity of the steps list from ordered_merge_steps instead of a full dict comparison and dict copy. I found uncached chunks with set(text_chunks).difference(piece_ids). I made one small change in minbpe/basic.py.
+> Evaluation 1 was rejected. encode_ir went from 639964071 to 649473184, ratio 1.0149. That first version did not help. Evaluation 3 was rejected at ratio 0.9927 against a required 0.9900. Evaluation 5 was accepted: encode_ir went from 639964065 to 629902892, ratio 0.9843. decode_ir was 1.0015, within limits. Outputs were identical in all three.
+> I believe fixed per-call overhead in encode_ordinary is a real cost, but the margin is thin. One wrong rearrangement made it slower.
+> Next I want to wait for the replays. Then I will look at whether the per-chunk loop after the cache lookup still copies data it does not need.
+>
+> 2026-10-13, episode `09a755d8d7d7` (accepted)
 
 > I tried to lower encode_ir in minbpe/regex.py around _encode_chunk, with a matching change in minbpe/basic.py. The first variant skipped merges whose children are absent from the chunk. It built the output by joining piece strings and mapping ord over them. The second kept the skip but used cached id lists and a deque-consumed extend.
 > Both made encode slower. Outputs were identical in both. Variant one measured encode_ir 661054772 against parent 644271941, ratio 1.0260, and was rejected. Variant two measured 655075128, ratio 1.0168, also rejected. It also raised train_basic_ir to ratio 1.0226. I reverted the edits and submitted nothing.
@@ -77,13 +84,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, I would read lineage_bench.py more closely to see what decode inputs dominate before touching decode() again. Otherwise I would move to another metric.
 >
 > 2026-10-13, episode `e12204b4d05b` (no candidate)
-
-> I changed the merge update in RegexTokenizer.train in minbpe/regex.py. First attempt was a small edit near lines 161-164. Second attempt rewrote the update loop at lines 184-264. Decrements now go straight to stats, and a helper drops a pair from stats, where and pushed when its count reaches zero. Increments are collected in a separate dict. Pairs that lose counts never contain the new token. Pairs that gain counts always do.
-> Evaluation 1 was rejected. train_regex_ir ratio was 1.0011 against a required 0.9900. Outputs were identical. Evaluation 3 was accepted with train_regex_ir at 0.9879, 366611030 to 362177815. encode_ir moved to 1.0041 and train_basic_ir to 1.0020, both within guard limits.
-> The small edit did not help. The split between decrements and increments gave a modest gain. The margin over 0.9900 is thin.
-> The candidate is queued for replay. Next I will profile the increment dict and the heap pushes to find more of the cost.
->
-> 2026-10-13, episode `9d9e9cd0f96c` (accepted)
 
 ## Licence
 
