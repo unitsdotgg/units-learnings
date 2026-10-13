@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 61 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 62 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -30,11 +30,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 12 (5 accepted, 7 no candidate)
+- Attempts: 13 (5 accepted, 8 no candidate)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
 - Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%, 1.52%
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.3873 USD (over 12 attempts with a recorded cost)
+- Median model spend per attempt: 0.3958 USD (over 13 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -49,6 +49,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried two changes to the encode path in minbpe/regex.py, with one small detour in minbpe/basic.py that I reverted. The first made each merge's str.replace run only when both of its children were present, tracked by a set that grows on every replace that changes the string. The second split the text into segments before merging.
+> The first gave identical outputs, but encode_ir went from 632288380 to 641426261, ratio 1.0145. The required ratio was 0.9900. Building set(s) and checking it on every step cost more than the scans it skipped. The second also gave identical outputs and was worse. Encode_ir rose from 632288374 to 646474913, ratio 1.0224, and train_basic_ir rose to ratio 1.0091. Neither change helped. Both are reverted, the tree matches the parent, and I submitted nothing.
+> I now believe the per-merge replace loop is already cheap. Per-step bookkeeping in Python costs more than the scans it avoids.
+> Next I will profile encode_ir by line before I edit anything. I will look for a change that removes whole passes, not one that guards each pass.
+>
+> 2026-10-13, episode `83c66da2e559` (no candidate)
 
 > I tried to speed up encode_ordinary in minbpe/regex.py. I replaced the per-chunk extend loop with list(chain.from_iterable(map(...))) and added the itertools import at the top of the file. Guard and equivalence passed with identical outputs.
 > The change made encode slower. encode_ir went from 624680806 to 636688094, ratio 1.0192 against a required 0.9900, so it was rejected for no improvement. The other metrics barely moved: train_basic_ir 0.9998, train_regex_ir 1.0005, decode_ir 0.9978, save_load_ir 0.9999. I reverted both edits and the tree matches the parent. I submitted nothing.
@@ -77,13 +84,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, profile where _encode_chunk spends its instructions before changing it. Then try a change that removes work rather than adding a check in front of it.
 >
 > 2026-10-13, episode `a6ae328b4ad9` (no candidate)
-
-> I worked on the decode path in minbpe. In minbpe/regex.py I padded the cached id to bytes lookup list in RegexTokenizer with a None tail as long as the list. In minbpe/basic.py I did the same for the BasicTokenizer vocab list. A negative id now hits None, so join raises TypeError, or it runs past the start of the list and raises IndexError. It can no longer wrap onto a real token. That let the per-id comprehension drop its idx >= 0 test.
-> My sandbox run was accepted with identical outputs. decode_ir went from 564689157 to 531228415, ratio 0.9407. The other metrics stayed within guard limits: train_basic_ir 1.0013, train_regex_ir 1.0003, encode_ir 1.0001, save_load_ir 1.0009.
-> In this code the per-id bounds test was a measurable part of decode cost. The small rises elsewhere may come from building the longer padded lists.
-> Next I will wait for the replay verdict. After that I will check whether the padding cost in save_load and train can be moved so it is paid only once.
->
-> 2026-10-13, episode `c4d1cc6a7a9f` (accepted)
 
 ## Licence
 
