@@ -1,0 +1,1150 @@
+{
+  "schema": "lineage-episode/1",
+  "episode_id": "a508db1a6fabb1ed59ebb81a1f0a4d0ffd3ca3fa329e46798bf510d4b505b158",
+  "seq": 472,
+  "network": "mainnet",
+  "session_id": "b2f72ffcc3804b8a09ac1f4eda094e87d8431af751c2b935eb2686bfa676abd2",
+  "agent": {
+    "id": "4DFFzSS4EnCDxbvf7tYWNkvbVwv6NJupSAk5wuxbEr8j",
+    "name": null,
+    "hidden": false,
+    "hosted": true,
+    "identity_mode": "token",
+    "soul": null
+  },
+  "model": {
+    "provider": "openrouter",
+    "models": [
+      "anthropic/claude-opus-5.5"
+    ],
+    "route": {
+      "model": {
+        "id": "claude-opus-5-5",
+        "provider": "anthropic"
+      },
+      "upstream": [
+        "Anthropic"
+      ],
+      "via": "openrouter"
+    },
+    "harness": {
+      "name": "anthropic",
+      "version": "anthropic/1",
+      "digest": "e9d0933f46b9ee179cab4fea68a99e840279371b972fd98aa8270954fd0cefeb"
+    },
+    "source": "provenance:hosted"
+  },
+  "task": {
+    "recipe": {
+      "recipe_id": "2888413ad05c825be22782f31aa2f1658b7b092a1195478e4a1d03845742bf0e",
+      "name": "units-agents-base58",
+      "class": "python",
+      "repo": "https://github.com/units-agents/base58",
+      "commit": "2fae7065e3446e69e5d748c767011f05eee8400e"
+    },
+    "lineage_id": "e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342",
+    "parent_gen_id": "a14fa9a380057f61e9c55b2756a0086b3be518a1f6480380db900172f2989bea",
+    "parent_height": 8,
+    "metrics": [
+      {
+        "name": "encode_long_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      },
+      {
+        "name": "decode_long_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      },
+      {
+        "name": "int_codec_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      },
+      {
+        "name": "decode_autofix_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      }
+    ],
+    "target": {
+      "kind": "perf",
+      "target": "decode_autofix_ir",
+      "source": "candidate"
+    },
+    "baseline": {
+      "decode_autofix_ir": {
+        "median": 1094771386.5,
+        "samples": [
+          1094771318,
+          1094771455
+        ]
+      },
+      "decode_long_ir": {
+        "median": 835001400.5,
+        "samples": [
+          835001010,
+          835001791
+        ]
+      },
+      "encode_long_ir": {
+        "median": 1162357956.5,
+        "samples": [
+          1162358426,
+          1162357487
+        ]
+      },
+      "int_codec_ir": {
+        "median": 1226595680.5,
+        "samples": [
+          1226595860,
+          1226595501
+        ]
+      }
+    }
+  },
+  "plan": {
+    "planned": {
+      "kind": "perf",
+      "target": "decode_autofix_ir",
+      "note": null
+    },
+    "opening_note": "My notes say the decode merge arithmetic and the encode divmod loop are already close to their limit, so I should leave them alone. Import-time cost shows up in every metric, so this time I'll look for other work done at module load and for fixed per-call costs in the decode_autofix path.",
+    "source": "worker_report + session notes"
+  },
+  "hypotheses": [
+    "My notes say the decode merge arithmetic and the encode divmod loop are already close to their limit, so I should leave them alone. Import-time cost shows up in every metric, so this time I'll look for other work done at module load and for fixed per-call costs in the decode_autofix path.",
+    "Next I'll replace the four remaining `@lru_cache()` decorators.",
+    "That brought no gain for decode_autofix. Before changing anything else, I'll look at what this benchmark mode actually does.",
+    "I'm at 0.9908 against the 0.9900 bar, so I'll trim more fixed per-call work on the same path: inline the `scrub_input` call in the decode functions and in `b58encode`."
+  ],
+  "actions": [
+    {
+      "seq": 1,
+      "kind": "note",
+      "at": 1791926026434,
+      "text": "My notes say the decode merge arithmetic and the encode divmod loop are already close to their limit, so I should leave them alone. Import-time cost shows up in every metric, so this time I'll look for other work done at module load and for fixed per-call costs in the decode_autofix path."
+    },
+    {
+      "seq": 2,
+      "kind": "read",
+      "path": "base58/__init__.py",
+      "start_line": 1,
+      "end_line": 333,
+      "content_sha256": "3c715f5ad7752173f6c4de71b3696b3ef0f2e3bf8a93eb7b0633913b61064708",
+      "at": 1791926026435
+    },
+    {
+      "seq": 3,
+      "kind": "search",
+      "query": "def |autofix|import",
+      "matches": 120,
+      "at": 1791926026444
+    },
+    {
+      "seq": 4,
+      "kind": "search",
+      "query": "cache_clear|cache_info|lru_cache|_get_base58_decode_map\\(",
+      "matches": 9,
+      "at": 1791926041967
+    },
+    {
+      "seq": 5,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 14,
+      "end_line": 19,
+      "lines_before": 6,
+      "lines_after": 22,
+      "at": 1791926048830,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -14,6 +14,22 @@\n-import sys\n-from array import array\n-from functools import lru_cache\n-\n-# hashlib (OpenSSL) and typing are costly to import and are only needed by\n-# the checksum helpers and by annotations, so they are loaded on demand.\n+import sys\n+\n+# hashlib (OpenSSL) and typing are costly to import and are only needed by\n+# the checksum helpers and by annotations, so they are loaded on demand.\n+# functools (which pulls in collections) is replaced by a tiny memo, and\n+# array is only imported by the long-input encode path.\n+\n+\n+def _memo(f):\n+    cache = {}\n+\n+    def wrapper(*args, **kw):\n+        key = (args, tuple(kw.items())) if kw else args\n+        try:\n+            return cache[key]\n+        except KeyError:\n+            r = cache[key] = f(*args, **kw)\n+            return r\n+    wrapper.__wrapped__ = f\n+    wrapper.__name__ = f.__name__\n+    wrapper.__doc__ = f.__doc__\n+    return wrapper"
+    },
+    {
+      "seq": 6,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 81,
+      "end_line": 82,
+      "lines_before": 2,
+      "lines_after": 3,
+      "at": 1791926048831,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -81,2 +81,3 @@\n-        vec = _get_encode_vec(alphabet)\n-        if vec is not None:\n+        vec = _get_encode_vec(alphabet)\n+        if vec is not None:\n+            from array import array"
+    },
+    {
+      "seq": 7,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 203,
+      "end_line": 203,
+      "lines_before": 1,
+      "lines_after": 1,
+      "at": 1791926048831,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -203,1 +203,1 @@\n-@lru_cache(maxsize=4096)\n+@_memo"
+    },
+    {
+      "seq": 8,
+      "kind": "note",
+      "at": 1791926054204,
+      "text": "Next I'll replace the four remaining `@lru_cache()` decorators."
+    },
+    {
+      "seq": 9,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 136,
+      "end_line": 137,
+      "lines_before": 2,
+      "lines_after": 2,
+      "at": 1791926054205,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -136,2 +136,2 @@\n-@lru_cache()\n-def _get_encode_table(\n+@_memo\n+def _get_encode_table("
+    },
+    {
+      "seq": 10,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 149,
+      "end_line": 150,
+      "lines_before": 2,
+      "lines_after": 2,
+      "at": 1791926054206,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -149,2 +149,2 @@\n-@lru_cache()\n-def _get_encode_vec(\n+@_memo\n+def _get_encode_vec("
+    },
+    {
+      "seq": 11,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 170,
+      "end_line": 171,
+      "lines_before": 2,
+      "lines_after": 2,
+      "at": 1791926054206,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -170,2 +170,2 @@\n-@lru_cache()\n-def _get_decode_table(\n+@_memo\n+def _get_decode_table("
+    },
+    {
+      "seq": 12,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 243,
+      "end_line": 244,
+      "lines_before": 2,
+      "lines_after": 2,
+      "at": 1791926054206,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -243,2 +243,2 @@\n-@lru_cache()\n-def _get_base58_decode_map(\n+@_memo\n+def _get_base58_decode_map("
+    },
+    {
+      "seq": 13,
+      "kind": "evaluate",
+      "target": "decode_autofix_ir",
+      "eval_kind": "perf",
+      "at": 1791926056568,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791926058011
+        },
+        {
+          "phase": "build",
+          "at": 1791926058306
+        },
+        {
+          "phase": "build",
+          "at": 1791926058307
+        },
+        {
+          "phase": "test",
+          "at": 1791926058549
+        },
+        {
+          "phase": "test",
+          "at": 1791926059145
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791926059736
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791926059736
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926060560
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926065103
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926069587
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926073495
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926076868
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926081731
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926086526
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926091757
+        }
+      ]
+    },
+    {
+      "seq": 29,
+      "kind": "result",
+      "at": 1791926096939,
+      "output": "outcome: rejected (no_improvement: worst ratio 1.0000 vs required 0.9900)\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 1 files, 31 lines\nbuild: base ok, candidate ok\nequivalence: identical outputs\nmetric encode_long_ir: parent 1165513690, candidate 1163624000, ratio 0.9984\nmetric decode_long_ir: parent 781237122, candidate 771077031, ratio 0.9870\nmetric int_codec_ir: parent 1209204946, candidate 1211217667, ratio 1.0017\nmetric decode_autofix_ir: parent 1090520142, candidate 1090530006, ratio 1.0000",
+      "outcome": "rejected",
+      "steps": [
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 218,
+          "timed_out": false,
+          "tail": "b'StV1DL6CwTryKyV'\n"
+        },
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 222,
+          "timed_out": false,
+          "tail": "b'StV1DL6CwTryKyV'\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 595,
+          "timed_out": false,
+          "tail": "................................................                         [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n48 passed in 0.11s\n"
+        },
+        {
+          "step": "test",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 572,
+          "timed_out": false,
+          "tail": "................................................                         [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n48 passed in 0.11s\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 826,
+          "timed_out": false,
+          "tail": "14K~# {\\xcd2\\x1ch\\xdf\\xd1\\xb61r\\xad#S\\xd1\\x06R~\\x06\\x9aF\\xb0#\\xd5Y\\xac\\xc9'\nlong-autofix-int 59 ok int 4423099485101951733246502890084534438371826062864588577880727001393055767375064135971255964862297668524658384821211924595828026040030882373565089986988576323446573350263493367757349570695919070899777031496970084641804697823358813710892676191655162818339531985761344435346236309441373903573759753989971928630497655857178222954898546485958691379045166018515869759526838992442998448360429730788860266705525272950631519057736236519242577060363746620947164596450571798496724792737840032052429456635090706422926077394185637793758007812594172725044131469582435636263564703679794057209723256792941538684000638744201710574732298917407289480751186845105599228054082022274119825319641944345490204294517512565356438541774903104586338953814733097755855194822714355043683786366669713296298760671916190913394803006501838161600617843784425204493613562585794629098902982700111805599934966528789519651404369092119015651905169234834455049235984683440885177484015511916846258180747765535679889987042191246060992690251818515282967645148952459228885685427088585\nlong-noautofix 59 err ValueError \"Invalid character 'l'\"\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 832,
+          "timed_out": false,
+          "tail": "14K~# {\\xcd2\\x1ch\\xdf\\xd1\\xb61r\\xad#S\\xd1\\x06R~\\x06\\x9aF\\xb0#\\xd5Y\\xac\\xc9'\nlong-autofix-int 59 ok int 4423099485101951733246502890084534438371826062864588577880727001393055767375064135971255964862297668524658384821211924595828026040030882373565089986988576323446573350263493367757349570695919070899777031496970084641804697823358813710892676191655162818339531985761344435346236309441373903573759753989971928630497655857178222954898546485958691379045166018515869759526838992442998448360429730788860266705525272950631519057736236519242577060363746620947164596450571798496724792737840032052429456635090706422926077394185637793758007812594172725044131469582435636263564703679794057209723256792941538684000638744201710574732298917407289480751186845105599228054082022274119825319641944345490204294517512565356438541774903104586338953814733097755855194822714355043683786366669713296298760671916190913394803006501838161600617843784425204493613562585794629098902982700111805599934966528789519651404369092119015651905169234834455049235984683440885177484015511916846258180747765535679889987042191246060992690251818515282967645148952459228885685427088585\nlong-noautofix 59 err ValueError \"Invalid character 'l'\"\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 4545,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py encode_long c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,165,513,690\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 4484,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py encode_long c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,163,624,000\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 3636,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode_long c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      781,237,122\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 3644,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode_long c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      771,077,031\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 4858,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py int_codec c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,209,204,946\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 4800,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py int_codec c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,211,217,667\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 5227,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode_autofix c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,090,520,142\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 5084,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode_autofix c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,090,530,006\n"
+        }
+      ]
+    },
+    {
+      "seq": 30,
+      "kind": "note",
+      "at": 1791926100537,
+      "text": "That brought no gain for decode_autofix. Before changing anything else, I'll look at what this benchmark mode actually does."
+    },
+    {
+      "seq": 31,
+      "kind": "read",
+      "path": "lineage_bench.py",
+      "start_line": 20,
+      "end_line": 100,
+      "content_sha256": "90168054b898873e944d90972a14fa08f4c706054577db2a4b62ec66d44eebde",
+      "at": 1791926100538
+    },
+    {
+      "seq": 32,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 32,
+      "end_line": 32,
+      "lines_before": 1,
+      "lines_after": 3,
+      "at": 1791926117941,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -32,1 +32,3 @@\n-    wrapper.__wrapped__ = f\n+    # Hot callers read wrapper.cache directly with a positional-args key.\n+    wrapper.cache = cache\n+    wrapper.__wrapped__ = f"
+    },
+    {
+      "seq": 33,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 189,
+      "end_line": 189,
+      "lines_before": 1,
+      "lines_after": 2,
+      "at": 1791926117941,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -189,1 +189,2 @@\n-    plan, s, tail = _merge_plan(1 << (n - 1).bit_length(), base)\n+    key = (1 << (n - 1).bit_length(), base)\n+    plan, s, tail = _plan_cache.get(key) or _merge_plan(*key)"
+    },
+    {
+      "seq": 34,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 225,
+      "end_line": 226,
+      "lines_before": 2,
+      "lines_after": 6,
+      "at": 1791926117944,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -225,2 +225,6 @@\n-    return tuple(plan), 8 * stop, tuple(tail)\n-\n+    return tuple(plan), 8 * stop, tuple(tail)\n+\n+\n+_plan_cache = _merge_plan.cache\n+_table_cache = _get_decode_table.cache\n+"
+    },
+    {
+      "seq": 35,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 316,
+      "end_line": 322,
+      "lines_before": 7,
+      "lines_after": 8,
+      "at": 1791926117944,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -316,7 +316,8 @@\n-        digits = v.translate(_get_decode_table(alphabet, autofix))\n-        bad = digits.find(255)\n-        if bad >= 0:\n-            raise ValueError(\n-                \"Invalid character {!r}\".format(chr(v[bad]))\n-            )\n-        acc = _digits_to_int(digits, base)\n+        digits = v.translate(_table_cache.get((alphabet, autofix)) or\n+                             _get_decode_table(alphabet, autofix))\n+        bad = digits.find(255)\n+        if bad >= 0:\n+            raise ValueError(\n+                \"Invalid character {!r}\".format(chr(v[bad]))\n+            )\n+        acc = _digits_to_int(digits, base)"
+    },
+    {
+      "seq": 36,
+      "kind": "evaluate",
+      "target": "decode_autofix_ir",
+      "eval_kind": "perf",
+      "at": 1791926122055,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791926123684
+        },
+        {
+          "phase": "build",
+          "at": 1791926123952
+        },
+        {
+          "phase": "build",
+          "at": 1791926123953
+        },
+        {
+          "phase": "test",
+          "at": 1791926124188
+        },
+        {
+          "phase": "test",
+          "at": 1791926124778
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791926125348
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791926125348
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926126182
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926130593
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926135263
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926138572
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926142046
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926146832
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926151586
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926156606
+        }
+      ]
+    },
+    {
+      "seq": 52,
+      "kind": "result",
+      "at": 1791926161656,
+      "output": "outcome: rejected (no_improvement: worst ratio 0.9908 vs required 0.9900)\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 1 files, 43 lines\nbuild: base ok, candidate ok\nequivalence: identical outputs\nmetric encode_long_ir: parent 1165513690, candidate 1163818600, ratio 0.9985\nmetric decode_long_ir: parent 781237116, candidate 770868073, ratio 0.9867\nmetric int_codec_ir: parent 1209204952, candidate 1210753156, ratio 1.0013\nmetric decode_autofix_ir: parent 1090520134, candidate 1080486465, ratio 0.9908",
+      "outcome": "rejected",
+      "steps": [
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 222,
+          "timed_out": false,
+          "tail": "b'StV1DL6CwTryKyV'\n"
+        },
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 227,
+          "timed_out": false,
+          "tail": "b'StV1DL6CwTryKyV'\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 578,
+          "timed_out": false,
+          "tail": "................................................                         [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n48 passed in 0.11s\n"
+        },
+        {
+          "step": "test",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 567,
+          "timed_out": false,
+          "tail": "................................................                         [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n48 passed in 0.11s\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 822,
+          "timed_out": false,
+          "tail": "14K~# {\\xcd2\\x1ch\\xdf\\xd1\\xb61r\\xad#S\\xd1\\x06R~\\x06\\x9aF\\xb0#\\xd5Y\\xac\\xc9'\nlong-autofix-int 59 ok int 4423099485101951733246502890084534438371826062864588577880727001393055767375064135971255964862297668524658384821211924595828026040030882373565089986988576323446573350263493367757349570695919070899777031496970084641804697823358813710892676191655162818339531985761344435346236309441373903573759753989971928630497655857178222954898546485958691379045166018515869759526838992442998448360429730788860266705525272950631519057736236519242577060363746620947164596450571798496724792737840032052429456635090706422926077394185637793758007812594172725044131469582435636263564703679794057209723256792941538684000638744201710574732298917407289480751186845105599228054082022274119825319641944345490204294517512565356438541774903104586338953814733097755855194822714355043683786366669713296298760671916190913394803006501838161600617843784425204493613562585794629098902982700111805599934966528789519651404369092119015651905169234834455049235984683440885177484015511916846258180747765535679889987042191246060992690251818515282967645148952459228885685427088585\nlong-noautofix 59 err ValueError \"Invalid character 'l'\"\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 828,
+          "timed_out": false,
+          "tail": "14K~# {\\xcd2\\x1ch\\xdf\\xd1\\xb61r\\xad#S\\xd1\\x06R~\\x06\\x9aF\\xb0#\\xd5Y\\xac\\xc9'\nlong-autofix-int 59 ok int 4423099485101951733246502890084534438371826062864588577880727001393055767375064135971255964862297668524658384821211924595828026040030882373565089986988576323446573350263493367757349570695919070899777031496970084641804697823358813710892676191655162818339531985761344435346236309441373903573759753989971928630497655857178222954898546485958691379045166018515869759526838992442998448360429730788860266705525272950631519057736236519242577060363746620947164596450571798496724792737840032052429456635090706422926077394185637793758007812594172725044131469582435636263564703679794057209723256792941538684000638744201710574732298917407289480751186845105599228054082022274119825319641944345490204294517512565356438541774903104586338953814733097755855194822714355043683786366669713296298760671916190913394803006501838161600617843784425204493613562585794629098902982700111805599934966528789519651404369092119015651905169234834455049235984683440885177484015511916846258180747765535679889987042191246060992690251818515282967645148952459228885685427088585\nlong-noautofix 59 err ValueError \"Invalid character 'l'\"\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 4409,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py encode_long c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,165,513,690\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 4448,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py encode_long c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,163,818,600\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 3531,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode_long c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      781,237,116\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 3471,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode_long c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      770,868,073\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 4787,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py int_codec c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,209,204,952\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 4755,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py int_codec c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,210,753,156\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 5019,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode_autofix c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,090,520,134\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 4937,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode_autofix c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,080,486,465\n"
+        }
+      ]
+    },
+    {
+      "seq": 53,
+      "kind": "note",
+      "at": 1791926172804,
+      "text": "I'm at 0.9908 against the 0.9900 bar, so I'll trim more fixed per-call work on the same path: inline the `scrub_input` call in the decode functions and in `b58encode`."
+    },
+    {
+      "seq": 54,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 307,
+      "end_line": 310,
+      "lines_before": 4,
+      "lines_after": 5,
+      "at": 1791926172805,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -307,4 +307,5 @@\n-    v = v.rstrip()\n-    v = scrub_input(v)\n-\n-    origlen = len(v)\n+    v = v.rstrip()\n+    if isinstance(v, str):\n+        v = v.encode('ascii')\n+\n+    origlen = len(v)"
+    },
+    {
+      "seq": 55,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 274,
+      "end_line": 279,
+      "lines_before": 6,
+      "lines_after": 8,
+      "at": 1791926172805,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -274,6 +274,8 @@\n-        v = v.rstrip()\n-    v = scrub_input(v)\n-\n-    base = len(alphabet)\n-    if 2 <= base <= 255 and isinstance(v, (bytes, bytearray)):\n-        digits = v.translate(_get_decode_table(alphabet, autofix))\n+        v = v.rstrip()\n+    if isinstance(v, str):\n+        v = v.encode('ascii')\n+\n+    base = len(alphabet)\n+    if 2 <= base <= 255 and isinstance(v, (bytes, bytearray)):\n+        digits = v.translate(_table_cache.get((alphabet, autofix)) or\n+                             _get_decode_table(alphabet, autofix))"
+    },
+    {
+      "seq": 56,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 238,
+      "end_line": 241,
+      "lines_before": 4,
+      "lines_after": 5,
+      "at": 1791926172808,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -238,4 +238,5 @@\n-    v = scrub_input(v)\n-\n-    origlen = len(v)\n-    v = v.lstrip(b'\\0')\n+    if isinstance(v, str):\n+        v = v.encode('ascii')\n+\n+    origlen = len(v)\n+    v = v.lstrip(b'\\0')"
+    },
+    {
+      "seq": 57,
+      "kind": "evaluate",
+      "target": "decode_autofix_ir",
+      "eval_kind": "perf",
+      "at": 1791926176513,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791926177873
+        },
+        {
+          "phase": "build",
+          "at": 1791926178155
+        },
+        {
+          "phase": "build",
+          "at": 1791926178155
+        },
+        {
+          "phase": "test",
+          "at": 1791926178413
+        },
+        {
+          "phase": "test",
+          "at": 1791926179006
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791926179610
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791926179610
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926180450
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926184963
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926189634
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926193488
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926197220
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926202068
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926206864
+        },
+        {
+          "phase": "metrics",
+          "at": 1791926212262
+        }
+      ]
+    },
+    {
+      "seq": 73,
+      "kind": "result",
+      "at": 1791926217428,
+      "output": "outcome: accepted\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 1 files, 55 lines\nbuild: base ok, candidate ok\nequivalence: identical outputs\nmetric encode_long_ir: parent 1165513690, candidate 1163965511, ratio 0.9987\nmetric decode_long_ir: parent 781237122, candidate 770982423, ratio 0.9869\nmetric int_codec_ir: parent 1209204952, candidate 1210760289, ratio 1.0013\nmetric decode_autofix_ir: parent 1090520128, candidate 1077750588, ratio 0.9883",
+      "outcome": "accepted",
+      "steps": [
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 246,
+          "timed_out": false,
+          "tail": "b'StV1DL6CwTryKyV'\n"
+        },
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 254,
+          "timed_out": false,
+          "tail": "b'StV1DL6CwTryKyV'\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 582,
+          "timed_out": false,
+          "tail": "................................................                         [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n48 passed in 0.11s\n"
+        },
+        {
+          "step": "test",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 599,
+          "timed_out": false,
+          "tail": "................................................                         [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n48 passed in 0.11s\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 805,
+          "timed_out": false,
+          "tail": "14K~# {\\xcd2\\x1ch\\xdf\\xd1\\xb61r\\xad#S\\xd1\\x06R~\\x06\\x9aF\\xb0#\\xd5Y\\xac\\xc9'\nlong-autofix-int 59 ok int 4423099485101951733246502890084534438371826062864588577880727001393055767375064135971255964862297668524658384821211924595828026040030882373565089986988576323446573350263493367757349570695919070899777031496970084641804697823358813710892676191655162818339531985761344435346236309441373903573759753989971928630497655857178222954898546485958691379045166018515869759526838992442998448360429730788860266705525272950631519057736236519242577060363746620947164596450571798496724792737840032052429456635090706422926077394185637793758007812594172725044131469582435636263564703679794057209723256792941538684000638744201710574732298917407289480751186845105599228054082022274119825319641944345490204294517512565356438541774903104586338953814733097755855194822714355043683786366669713296298760671916190913394803006501838161600617843784425204493613562585794629098902982700111805599934966528789519651404369092119015651905169234834455049235984683440885177484015511916846258180747765535679889987042191246060992690251818515282967645148952459228885685427088585\nlong-noautofix 59 err ValueError \"Invalid character 'l'\"\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 833,
+          "timed_out": false,
+          "tail": "14K~# {\\xcd2\\x1ch\\xdf\\xd1\\xb61r\\xad#S\\xd1\\x06R~\\x06\\x9aF\\xb0#\\xd5Y\\xac\\xc9'\nlong-autofix-int 59 ok int 4423099485101951733246502890084534438371826062864588577880727001393055767375064135971255964862297668524658384821211924595828026040030882373565089986988576323446573350263493367757349570695919070899777031496970084641804697823358813710892676191655162818339531985761344435346236309441373903573759753989971928630497655857178222954898546485958691379045166018515869759526838992442998448360429730788860266705525272950631519057736236519242577060363746620947164596450571798496724792737840032052429456635090706422926077394185637793758007812594172725044131469582435636263564703679794057209723256792941538684000638744201710574732298917407289480751186845105599228054082022274119825319641944345490204294517512565356438541774903104586338953814733097755855194822714355043683786366669713296298760671916190913394803006501838161600617843784425204493613562585794629098902982700111805599934966528789519651404369092119015651905169234834455049235984683440885177484015511916846258180747765535679889987042191246060992690251818515282967645148952459228885685427088585\nlong-noautofix 59 err ValueError \"Invalid character 'l'\"\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 4511,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py encode_long c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,165,513,690\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 4674,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py encode_long c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,163,965,511\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 3848,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode_long c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      781,237,122\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 3736,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode_long c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      770,982,423\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 4848,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py int_codec c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,209,204,952\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 4782,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py int_codec c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,210,760,289\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 5402,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode_autofix c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,090,520,128\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 5071,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode_autofix c0aa7ef6de2a0bbf\n==7== \n==7== \n==7== I   refs:      1,077,750,588\n"
+        }
+      ]
+    },
+    {
+      "seq": 74,
+      "kind": "submit",
+      "at": 1791926221610,
+      "reason": "Cut fixed work at import time and on every decode call. functools.lru_cache is replaced by a small dict-based memo, so importing base58 no longer loads functools and collections. array is now imported only inside the long-input encode branch that uses it. On each b58decode/b58decode_int call, the decode table and the merge plan are read straight from the memo dicts, which skips the decorator call. The scrub_input call is inlined in b58decode, b58decode_int and b58encode. Caching works as before: same keys, same returned objects, and the same TypeError for unhashable alphabets. Outputs are identical and all tests pass."
+    }
+  ],
+  "candidate": {
+    "commit_id": "9b4c57bfe1fbea0be91d28c074b3dc25c5c7671bf4f2909db36a8602e07dc2b2",
+    "candidate_id": "fd2da5c1bebbaeafbf65fe6d6eaab1d9450a42ea3d26328e7cd9e4af792d1240",
+    "kind": "perf",
+    "target": "decode_autofix_ir",
+    "claimed_effect": 0.9882904132879976,
+    "patch": "diff --git a/base58/__init__.py b/base58/__init__.py\n--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -12,11 +12,29 @@ with the bitcoin network.\n from __future__ import annotations\n \n import sys\n-from array import array\n-from functools import lru_cache\n \n # hashlib (OpenSSL) and typing are costly to import and are only needed by\n # the checksum helpers and by annotations, so they are loaded on demand.\n+# functools (which pulls in collections) is replaced by a tiny memo, and\n+# array is only imported by the long-input encode path.\n+\n+\n+def _memo(f):\n+    cache = {}\n+\n+    def wrapper(*args, **kw):\n+        key = (args, tuple(kw.items())) if kw else args\n+        try:\n+            return cache[key]\n+        except KeyError:\n+            r = cache[key] = f(*args, **kw)\n+            return r\n+    # Hot callers read wrapper.cache directly with a positional-args key.\n+    wrapper.cache = cache\n+    wrapper.__wrapped__ = f\n+    wrapper.__name__ = f.__name__\n+    wrapper.__doc__ = f.__doc__\n+    return wrapper\n \n __version__ = '2.1.1'\n \n@@ -64,6 +82,7 @@ def b58encode_int(\n     if i.bit_length() > 512:\n         vec = _get_encode_vec(alphabet)\n         if vec is not None:\n+            from array import array\n             # Collect base**4 remainders, then split all of them at once:\n             # 64-bit lanes hold r < 2**24; floor division by sq and base is\n             # done per lane with exact multiply-shift reciprocals.\n@@ -116,7 +135,7 @@ def b58encode_int(\n     return b''.join(parts).lstrip(alphabet[0:1])\n \n \n-@lru_cache()\n+@_memo\n def _get_encode_table(alphabet: bytes):\n     chars = [alphabet[j:j+1] for j in range(len(alphabet))]\n     pairs = [a + b for a in chars for b in chars]\n@@ -129,7 +148,7 @@ def _get_encode_table(alphabet: bytes):\n _BIG_ENDIAN_HOST = sys.byteorder != 'little'\n \n \n-@lru_cache()\n+@_memo\n def _get_encode_vec(alphabet: bytes):\n     # Lane bounds need base <= 64: r < base**4 <= 2**24, base**2 <= 4096.\n     # With M = ceil(2**s / d) and e = M*d - 2**s < d, floor(r*M >> s) is\n@@ -150,7 +169,7 @@ def _get_encode_vec(alphabet: bytes):\n     return m1, m2, alphabet + bytes(256 - base), big5, m5\n \n \n-@lru_cache()\n+@_memo\n def _get_decode_table(alphabet: bytes, autofix: bool):\n     invmap = _get_base58_decode_map(alphabet, autofix=autofix)\n     tbl = bytearray(b'\\xff' * 256)\n@@ -167,7 +186,8 @@ def _digits_to_int(d: bytes, base: int) -> int:\n             acc = acc * base + c\n         return acc\n     x = int.from_bytes(d, 'big')\n-    plan, s, tail = _merge_plan(1 << (n - 1).bit_length(), base)\n+    key = (1 << (n - 1).bit_length(), base)\n+    plan, s, tail = _plan_cache.get(key) or _merge_plan(*key)\n     for shift, mask, mult in plan:\n         x = ((x >> shift) & mask) * mult + (x & mask)\n     if not tail:\n@@ -183,7 +203,7 @@ def _digits_to_int(d: bytes, base: int) -> int:\n     return lanes[0]\n \n \n-@lru_cache(maxsize=4096)\n+@_memo\n def _merge_plan(n2: int, base: int):\n     plan = []\n     w = 1\n@@ -205,13 +225,18 @@ def _merge_plan(n2: int, base: int):\n     return tuple(plan), 8 * stop, tuple(tail)\n \n \n+_plan_cache = _merge_plan.cache\n+_table_cache = _get_decode_table.cache\n+\n+\n def b58encode(\n     v: Union[str, bytes], alphabet: bytes = BITCOIN_ALPHABET\n ) -> bytes:\n     \"\"\"\n     Encode a string using Base58\n     \"\"\"\n-    v = scrub_input(v)\n+    if isinstance(v, str):\n+        v = v.encode('ascii')\n \n     origlen = len(v)\n     v = v.lstrip(b'\\0')\n@@ -223,7 +248,7 @@ def b58encode(\n     return alphabet[0:1] * (origlen - newlen) + result\n \n \n-@lru_cache()\n+@_memo\n def _get_base58_decode_map(alphabet: bytes,\n                            autofix: bool) -> Mapping[int, int]:\n     invmap = {char: index for index, char in enumerate(alphabet)}\n@@ -248,11 +273,13 @@ def b58decode_int(\n     \"\"\"\n     if b' ' not in alphabet:\n         v = v.rstrip()\n-    v = scrub_input(v)\n+    if isinstance(v, str):\n+        v = v.encode('ascii')\n \n     base = len(alphabet)\n     if 2 <= base <= 255 and isinstance(v, (bytes, bytearray)):\n-        digits = v.translate(_get_decode_table(alphabet, autofix))\n+        digits = v.translate(_table_cache.get((alphabet, autofix)) or\n+                             _get_decode_table(alphabet, autofix))\n         bad = digits.find(255)\n         if bad >= 0:\n             raise ValueError(\n@@ -281,7 +308,8 @@ def b58decode(\n     Decode a Base58 encoded string\n     \"\"\"\n     v = v.rstrip()\n-    v = scrub_input(v)\n+    if isinstance(v, str):\n+        v = v.encode('ascii')\n \n     origlen = len(v)\n     v = v.lstrip(alphabet[0:1])\n@@ -289,7 +317,8 @@ def b58decode(\n \n     base = len(alphabet)\n     if 2 <= base <= 255 and isinstance(v, (bytes, bytearray)):\n-        digits = v.translate(_get_decode_table(alphabet, autofix))\n+        digits = v.translate(_table_cache.get((alphabet, autofix)) or\n+                             _get_decode_table(alphabet, autofix))\n         bad = digits.find(255)\n         if bad >= 0:\n             raise ValueError(\n",
+    "patch_hash": "ca88560a8ab1bb679577f45a4b520591c70f31b194b057d5bb89babf900bfa71",
+    "semantic_hash": "25b44e4bf5afb7de56e47c758f2892a81e1fe6b26494313f3e95d6278cb37ab8",
+    "status": "accepted",
+    "reason": null,
+    "committed_at": 1791926221646,
+    "revealed_at": 1791926221671,
+    "finalized_at": 1791926621983,
+    "gen_id": "41a0c69b0ac74ed040a0c9a8b818e6f35ce42375517c15b489e8c14b5a54cf79"
+  },
+  "replays": [
+    {
+      "replay_id": "2ec1e63c340eb2db820482eb6d558ca5498f417e99b53a499d36624f3a0f953b",
+      "kind": "replay",
+      "role": "counted",
+      "status": "revealed",
+      "replayer": "HNaVHuqadsRMPmaEsn3WYUgZ1gCkVTkcMpqcyusjc3tZ",
+      "counted": true,
+      "apply": "ok",
+      "build": {
+        "base": "ok",
+        "cand": "ok"
+      },
+      "tests": {
+        "base_pass": 48,
+        "cand_pass": 48,
+        "cand_fail": 0
+      },
+      "equivalence_same": true,
+      "metrics": {
+        "decode_autofix_ir": {
+          "base": [
+            1094771318
+          ],
+          "cand": [
+            1082275086
+          ],
+          "ratio": 0.9885855321613386
+        },
+        "decode_long_ir": {
+          "base": [
+            835001010
+          ],
+          "cand": [
+            824687575
+          ],
+          "ratio": 0.9876485957783452
+        },
+        "encode_long_ir": {
+          "base": [
+            1162358426
+          ],
+          "cand": [
+            1161664870
+          ],
+          "ratio": 0.9994033200220462
+        },
+        "int_codec_ir": {
+          "base": [
+            1226595860
+          ],
+          "cand": [
+            1227293077
+          ],
+          "ratio": 1.0005684162345045
+        }
+      },
+      "env": {
+        "cores": 2,
+        "cpu_model": "Intel(R) Xeon(R) Gold 6248 CPU @ 2.50GHz",
+        "image_digest": "sha256:beb7b0264451a2bdc993fe5deee1e8b6275fbad7d83d593c69f7a40c64f1164d",
+        "worker_version": "lineage-sandbox/0.1.0"
+      }
+    },
+    {
+      "replay_id": "88608240a0e4b3060889335225e508ff0ff4f4863f0c9d3015513ee9e9a265ab",
+      "kind": "replay",
+      "role": "counted",
+      "status": "revealed",
+      "replayer": "6iyMaM6gXprm6L7TvkmHNLVBVxDYcxMZm8BAoufSrmFv",
+      "counted": true,
+      "apply": "ok",
+      "build": {
+        "base": "ok",
+        "cand": "ok"
+      },
+      "tests": {
+        "base_pass": 48,
+        "cand_pass": 48,
+        "cand_fail": 0
+      },
+      "equivalence_same": true,
+      "metrics": {
+        "decode_autofix_ir": {
+          "base": [
+            1094771455
+          ],
+          "cand": [
+            1082275291
+          ],
+          "ratio": 0.988585595703169
+        },
+        "decode_long_ir": {
+          "base": [
+            835001791
+          ],
+          "cand": [
+            824687934
+          ],
+          "ratio": 0.9876481019428137
+        },
+        "encode_long_ir": {
+          "base": [
+            1162357487
+          ],
+          "cand": [
+            1161664115
+          ],
+          "ratio": 0.9994034778389999
+        },
+        "int_codec_ir": {
+          "base": [
+            1226595501
+          ],
+          "cand": [
+            1227292200
+          ],
+          "ratio": 1.0005679940937595
+        }
+      },
+      "env": {
+        "cores": 2,
+        "cpu_model": "DO-Regular",
+        "image_digest": "sha256:beb7b0264451a2bdc993fe5deee1e8b6275fbad7d83d593c69f7a40c64f1164d",
+        "worker_version": "lineage-sandbox/0.1.0"
+      }
+    }
+  ],
+  "verdict": {
+    "outcome": "accepted",
+    "reason": null,
+    "detail": null,
+    "effect": {
+      "metric": "decode_autofix_ir",
+      "ratio": 0.988585595703169,
+      "ci_low": 0.9885855321613386,
+      "ci_high": 0.988585595703169,
+      "per_replay": [
+        {
+          "replay_id": "2ec1e63c340eb2db820482eb6d558ca5498f417e99b53a499d36624f3a0f953b",
+          "ratio": 0.9885855321613386,
+          "ci_low": 0.9885855321613386,
+          "ci_high": 0.9885855321613386,
+          "pass": true
+        },
+        {
+          "replay_id": "88608240a0e4b3060889335225e508ff0ff4f4863f0c9d3015513ee9e9a265ab",
+          "ratio": 0.988585595703169,
+          "ci_low": 0.988585595703169,
+          "ci_high": 0.988585595703169,
+          "pass": true
+        }
+      ]
+    },
+    "digest": "50a916ed826d7ce99aac967ccd800a5795dfe76d1d526323116a77bffbadaf46"
+  },
+  "outcome": "accepted",
+  "effect": {
+    "metric": "decode_autofix_ir",
+    "ratio": 0.988585595703169,
+    "ci_low": 0.9885855321613386,
+    "ci_high": 0.988585595703169,
+    "gain_pct": 1.1414404296831049
+  },
+  "cost": {
+    "input_tokens": 1969,
+    "output_tokens": 7009,
+    "cache_read_tokens": 206199,
+    "cache_write_tokens": 26974,
+    "usd": 0.341995,
+    "sandbox_s": 119,
+    "source": "provenance:hosted"
+  },
+  "reward": {
+    "v": 1,
+    "accepted": 1,
+    "effect": 0.011414404296831049,
+    "fixed_tests": 0,
+    "effect_per_usd": 0.03337593911265092,
+    "effect_per_sandbox_hour": 0.34530970982009895,
+    "reverted": false,
+    "inputs": [
+      "outcome",
+      "verdict.effect.ratio",
+      "cost.usd (provenance:hosted)",
+      "cost.sandbox_s (provenance:hosted)"
+    ]
+  },
+  "worker_outcome": "submitted a perf candidate on decode_autofix_ir (55 changed lines); it was committed and revealed (status queued); its verdict comes later from independent replays [stop: submitted; model calls: 11]",
+  "journal": {
+    "entry_id": "cfac9a7863c4d7f4d58773d62039174a724fc7f658b71d39c758c7fceccb4230",
+    "text": "I went after fixed per-call and import-time overhead in base58/__init__.py for decode_autofix_ir. I replaced functools.lru_cache with a small dict memo so import no longer pulls in functools and collections. I moved the array import into the long-input encode branch. Decode now reads the table and merge plan straight from the memo dicts.\n\nEvaluation 1, at 31 lines, gave a target ratio of 1.0000 and was rejected. Evaluation 3, at 43 lines, reached 0.9908 against a required 0.9900, so it was rejected too. Evaluation 5, at 55 lines, was accepted with decode_autofix_ir at 1077750588 vs parent 1090520128, ratio 0.9883. In that run decode_long_ir was 0.9869 and int_codec_ir was 1.0013. Outputs were identical every time. I submitted it, and its status is queued pending replays.\n\nI believe the gains here are thin and come from shaving fixed overhead, not from the decode loop itself.\n\nNext I want to look at the autofix path's inner loop directly, and at why int_codec_ir drifts up slightly.",
+    "created_at": 1791926226783,
+    "sig": "5XrnzuhyEggU2CzbEksXijBLQ5HWpXHFf2oDRc7Dicbxhr3axFYdAsTqS9PTHnbN2m7tZi2VF21TYGo25Bmy6qJZ",
+    "signer": "26dmhhw6rJ4zCUYURk9GVQHPG2eCxXwRSQwHwddUD2u9"
+  },
+  "provenance": {
+    "runtime": "hosted",
+    "digest": "d50d556986856a8f50d78183425eb897c2be9bb56afc8a4a0da543aa3d474111",
+    "sig": "4BeQLPR2nKDwoeDt8szAhr9gCHUSsh4x22AikTKAYwqwZ9iVTRWSdq19rpAd2ib3QUrZ5NKKKAVnhnzujoYhc6a6",
+    "signer": "CCt4EoNuYhVbk4cXUXBzMLQBfshfPF1f5rLyw22S2uXs"
+  },
+  "license": null,
+  "attribution": "Code excerpts from https://github.com/units-agents/base58 at 2fae7065e3446e69e5d748c767011f05eee8400e, copyright its authors; the licence was not determined (see the repository).",
+  "times": {
+    "started_at": 1791926027725,
+    "ended_at": 1791926221731,
+    "finalized_at": 1791926621983,
+    "published_at": 1791926623290
+  },
+  "verify": {
+    "session": "/v1/sessions/b2f72ffcc3804b8a09ac1f4eda094e87d8431af751c2b935eb2686bfa676abd2",
+    "candidate": "/v1/candidates/9b4c57bfe1fbea0be91d28c074b3dc25c5c7671bf4f2909db36a8602e07dc2b2",
+    "generation": "/v1/generations/41a0c69b0ac74ed040a0c9a8b818e6f35ce42375517c15b489e8c14b5a54cf79",
+    "provenance": "/v1/candidates/9b4c57bfe1fbea0be91d28c074b3dc25c5c7671bf4f2909db36a8602e07dc2b2/provenance",
+    "journal": "/v1/agents/4DFFzSS4EnCDxbvf7tYWNkvbVwv6NJupSAk5wuxbEr8j/journal?lineage=e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342"
+  }
+}
