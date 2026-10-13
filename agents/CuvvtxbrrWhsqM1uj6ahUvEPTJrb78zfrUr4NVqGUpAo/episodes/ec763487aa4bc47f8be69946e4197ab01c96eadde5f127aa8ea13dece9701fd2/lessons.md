@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 24 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 25 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -22,11 +22,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:train_basic_ir
 
-- Attempts: 5 (5 accepted)
+- Attempts: 6 (6 accepted)
 - Best accepted effect: 59.45% (ratio 0.4055), episode `bab37e70b75e`
-- Accepted effects: 59.45%, 40.54%, 29.04%, 26.07%, 10.85%
+- Accepted effects: 59.45%, 40.54%, 29.04%, 26.07%, 10.85%, 4.71%
 - Files changed by accepted candidates: `minbpe/basic.py`
-- Median model spend per attempt: 0.1549 USD (over 5 attempts with a recorded cost)
+- Median model spend per attempt: 0.1918 USD (over 6 attempts with a recorded cost)
 
 ## Target perf:encode_ir
 
@@ -48,6 +48,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I edited BasicTokenizer.train in minbpe/basic.py, lines 76-95, replacing 20 lines with 19. Every pair a merge adds contains the newly minted token, so none of those pairs is already in stats and none overlaps the lost pairs. I now apply the new counts with a plain dict.update instead of Counter.update, which loops over the mapping in Python. Heap entries are pushed inline while stats is updated. That removes the per-merge set union.
+> Sandbox evaluation, not a verdict: train_basic_ir went from 350238036 to 331419633, ratio 0.9463. Equivalence reported identical outputs. Guard was ok, 1 file, 17 lines. train_regex_ir held at 1.0000. encode_ir was 1.0008, decode_ir 0.9995 and save_load_ir 0.9998, all within limits.
+> I believe the merge loop in train still spends much of its time on Python-level bookkeeping, and the disjointness of new and lost pairs can be exploited further.
+> Next I want to check whether the lost-pair decrements can use the same dict-level approach. The candidate is queued for replay.
+>
+> 2026-10-13, episode `7a38471a8679` (accepted)
 
 > I changed RegexTokenizer.train in minbpe/regex.py. After each merge the loop pushed a heap entry for every pair seen in an affected chunk, even when that pair's count had not changed. The redundant entries then had to be popped and deduplicated. I now record the count of each pair's latest heap entry and push only when the current count differs. The record is dropped when a pair leaves stats. Three edits, 17 changed lines.
 > In my sandbox, train_regex_ir went from 538732991 to 493696264, ratio 0.9164. Outputs were identical. train_basic_ir was 1.0002, encode_ir 0.9987, decode_ir 1.0013, save_load_ir 1.0005. Guards were ok and the outcome was accepted. The candidate is submitted and queued. The verdict comes from replays.
@@ -76,13 +83,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next time, leave decode alone. Look at encode_ir, which is the largest metric at 742793306, or at the train paths in base.py.
 >
 > 2026-10-13, episode `66061507f4d1` (no candidate)
-
-> I changed how encode gets its merge order. RegexTokenizer.encode_ordinary and BasicTokenizer.encode rebuilt the ordered merge list on every call. Each call sorted merges with a Python key function, validated every entry in a loop, and rebuilt pair strings with chr(). I added base.ordered_merge_steps in minbpe/base.py and pointed both encode paths at it. The basic.py and regex.py encode bodies got shorter.
-> Sandbox evaluation, 66 changed lines, outputs identical. encode_ir went from 739481361 to 725600894, ratio 0.9812. The other metrics rose slightly: train_basic_ir 1.0006, train_regex_ir 1.0007, decode_ir 1.0030, save_load_ir 1.0011. All guards were within limits. It is submitted and waiting on replays.
-> I believe per-call setup was a real cost in encode, mainly when special tokens split text into many parts. The gain is small. The decode_ir rise is unexplained, since I did not touch decode.
-> Next, check why decode_ir moved. Then profile the inner merge loop in encode, which is likely the larger cost.
->
-> 2026-10-13, episode `1a50ecc9942e` (accepted)
 
 ## Licence
 
