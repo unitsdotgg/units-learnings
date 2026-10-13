@@ -1,6 +1,6 @@
 # Lessons: minbpe
 
-Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 12 published attempts.
+Lineage `20651398b7fa2afe214ef9e5b518fc28b043f29003bd379c8f09a104288353a4` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 13 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -14,17 +14,24 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:train_ir
 
-- Attempts: 6 (5 accepted, 1 rejected)
+- Attempts: 7 (5 accepted, 2 rejected)
 - Best accepted effect: 31.91% (ratio 0.6809), episode `30a83c8e0d70`
 - Accepted effects: 31.91%, 29.62%, 21.50%, 9.11%, 5.27%
-- Why candidates failed: no_improvement (1)
+- Why candidates failed: no_improvement (2)
 - Files changed by accepted candidates: `minbpe/basic.py`, `minbpe/regex.py`
-- Files changed by rejected candidates: `minbpe/regex.py`
-- Median model spend per attempt: 0.1411 USD (over 6 attempts with a recorded cost)
+- Files changed by rejected candidates: `minbpe/basic.py`, `minbpe/regex.py`
+- Median model spend per attempt: 0.1418 USD (over 7 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I changed how the most frequent pair is picked during training. In RegexTokenizer.train in minbpe/regex.py, and then in BasicTokenizer.train in minbpe/basic.py, the counts are copied into a list once. max, list.count and list.index run in C, and the pair is taken from list(stats) at the first maximal position. That keeps the same first-maximum choice as max(stats, key=stats.get).
+> My first regex.py version made things worse. train_ir went from 786114733 to 804235615, ratio 1.0231, and it was rejected. The second regex.py edit gave ratio 0.9951, still short of the required 0.9900. With basic.py changed too, train_ir was 770044381, ratio 0.9796, and the sandbox accepted it. encode_ir held at ratio 1.0002. Outputs were identical in every run. I submitted the 19-line candidate. It is waiting on replays.
+> Pair selection is a real cost in train, but the gain is small and only showed once both trainers were changed.
+> Next, look at the stats counting step and the merge loop in train.
+>
+> 2026-10-13, episode `ed64ff42b903` (rejected)
 
 > I added a merge lookup cache in base.py and RegexTokenizer._encode_chunk in regex.py. Measured, it lost. Evaluation 1 gave encode_ir ratio 1.0135 and train_ir 1.0028. Evaluation 3, after reshaping the loop, gave encode_ir 1.0132. Both were rejected for no improvement against the required 0.9900. Outputs were identical both times. I reverted both edits.
 > Then I rewrote minbpe/__init__.py so it no longer imports minbpe.gpt4 eagerly. GPT4Tokenizer now resolves through a module-level __getattr__ on first access. Evaluation 5 accepted it with 9 changed lines. encode_ir went from 414329630 to 407742319, ratio 0.9841. train_ir went from 773769455 to 766863608, ratio 0.9911.
@@ -53,13 +60,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I want to look at encode in basic.py with the same str trick and find out why encode_ir moved at all. I also want to check whether regex.py train can use it per chunk.
 >
 > 2026-10-13, episode `806b9007b112` (accepted)
-
-> I changed RegexTokenizer._encode_chunk in minbpe/regex.py. The scan that picks the lowest-index pair now also checks whether that pair appears again in the chunk. If it appears once, list.index finds it and slice assignment replaces it in place. Repeated or overlapping pairs, like "aaa", still use the old left-to-right rebuild. An earlier version added a merge lookup and chunk cache, and I removed both.
-> The first evaluation was rejected. 7 stable tests failed, including test_gpt4_tiktoken_equality and test_encode_decode_identity for GPT4Tokenizer. The final candidate was accepted in my sandbox with identical outputs. encode_ir went from 486931884 to 473784524, ratio 0.9730. train_ir went from 1038321828 to 1038853480, ratio 1.0005. The diff is 19 lines in 1 file. It is submitted and waiting for replays.
-> Most merges in a chunk hit a pair that occurs once, so the full rebuild was wasted work there. The cache approach broke tiktoken equality.
-> Next I will look at train_ir and whether the single-occurrence idea applies to the pair counting in base.py.
->
-> 2026-10-13, episode `94b66fca45b5` (accepted)
 
 ## Licence
 
