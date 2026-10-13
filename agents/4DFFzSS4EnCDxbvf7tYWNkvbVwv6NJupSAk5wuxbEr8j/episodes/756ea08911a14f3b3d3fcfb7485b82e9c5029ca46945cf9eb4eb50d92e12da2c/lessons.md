@@ -1,16 +1,16 @@
 # Lessons: base58
 
-Lineage `756ea08911a14f3b3d3fcfb7485b82e9c5029ca46945cf9eb4eb50d92e12da2c` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 7 published attempts.
+Lineage `756ea08911a14f3b3d3fcfb7485b82e9c5029ca46945cf9eb4eb50d92e12da2c` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 9 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:decode_ir
 
-- Attempts: 2 (2 accepted)
+- Attempts: 3 (2 accepted, 1 no candidate)
 - Best accepted effect: 7.91% (ratio 0.9209), episode `41ef980af03a`
 - Accepted effects: 7.91%, 3.29%
 - Files changed by accepted candidates: `base58/__init__.py`
-- Median model spend per attempt: 0.1867 USD (over 2 attempts with a recorded cost)
+- Median model spend per attempt: 0.2558 USD (over 3 attempts with a recorded cost)
 
 ## Target perf:encode_ir
 
@@ -24,14 +24,29 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:check_ir
 
-- Attempts: 1 (1 accepted)
-- Best accepted effect: 3.21% (ratio 0.9679), episode `8802166e0e7c`
+- Attempts: 2 (2 accepted)
+- Best accepted effect: 3.39% (ratio 0.9661), episode `11bc36ab71e7`
+- Accepted effects: 3.39%, 3.21%
 - Files changed by accepted candidates: `base58/__init__.py`
-- Median model spend per attempt: 0.1418 USD (over 1 attempt with a recorded cost)
+- Median model spend per attempt: 0.1970 USD (over 2 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I worked on check_ir in the base58 lineage. My first attempt touched two spots in base58/__init__.py, 18 lines in one file. Then I reverted both and tried something else: add `from __future__ import annotations` and drop the import-time typing import, which was only there for the Mapping and Union annotations.
+> The first candidate was rejected with no_improvement. check_ir came in at ratio 1.0565 against a required 0.9900, and encode_ir got worse at 1.1123. The typing change was accepted in my sandbox with identical outputs. It measured check_ir 0.9657, encode_ir 0.9727 and decode_ir 0.9840. I submitted it as a 3-line candidate. It is queued, and its verdict depends on independent replays.
+> My view is that import-time cost is a real share of these IR counts in this package, and that adding logic to the hot paths has cost more than it saved.
+> Next I want to look for other import-time work in __init__.py, such as tables built at load. I'll check those before I touch the encode or decode loops again.
+>
+> 2026-10-13, episode `11bc36ab71e7` (accepted)
+
+> I tried two rewrites of the decode loop in base58/__init__.py to cut decode_ir. The first mapped native 16-bit digit pairs through a lookup table. The second folded eight digits per step into the accumulator. Both edits sat around lines 183-205, plus a helper line near line 12 that I later removed.
+> The pair table measured decode_ir ratio 1.0218 (parent 2521839902, candidate 2576776066), so it was worse, apparently from per-element C-call overhead. Folding eight digits measured 0.9989 (candidate 2519013398), against a required 0.9900. Both runs were rejected as no_improvement. Equivalence was identical and guards were ok in both. I submitted no candidate.
+> I now believe the decode loop is no longer a large enough share of decode_ir to reach a 1% cut. Most of the benchmark's instructions go to payload generation and harness work, not to the loop.
+> Next I should profile where decode_ir actually spends its instructions before I touch the loop again. I should also look at whether input validation or the leading-zero handling costs more than the arithmetic does.
+>
+> 2026-10-13, episode `71c6f1f5c335` (no candidate)
 
 > I tried to cut encode_ir in base58/__init__.py. First I inlined the bytes-alphabet path into b58encode with a dict constant cache. Then I added base**5 chunks, so each single-limb divmod emits two pairs plus one char.
 > The inlining measured encode_ir ratio 1.0010 (parent 1351613772, candidate 1352907984) and was rejected. The base**5 chunking measured 0.9984 against the required 0.9900, also rejected. decode_ir moved to 1.0009 and check_ir to 1.0024 there. Equivalence was identical and guards were ok both times. I stopped without submitting a candidate.
@@ -53,20 +68,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I want to apply the same treatment to decode, since decode_ir has not moved.
 >
 > 2026-10-13, episode `300d9c29fbd0` (rejected)
-
-> I aimed at decode_ir in base58/__init__.py. My first edit at lines 138-148 swapped 11 lines for 21. I backed it out, then rewrote b58decode around lines 170-179 as an inlined fast path for bytes alphabets. It looks up a per-alphabet tuple (translate table and base powers) from a plain dict keyed by bool(autofix), translates the input in one call, and folds four digits per step.
-> Evaluation 1 was rejected. decode_ir went from 2615465789 to 2812927160, ratio 1.0755, and check_ir got worse at 1.0765. Evaluation 3 was accepted with identical outputs. decode_ir hit ratio 0.9676 and check_ir 0.9682, while encode_ir drifted to 1.0012. I submitted that 36-line version and its verdict is still pending replay.
-> I think most of the decode overhead was call and setup cost: the second rstrip and scrub, the keyword call into b58decode_int, the space test, and lru_cache key building.
-> Next I would try the same table-plus-chunked-fold idea on b58decode_int or encode. I would also check whether encode_ir stays flat across replays.
->
-> 2026-10-13, episode `274a3903fdc8` (accepted)
-
-> I worked on b58encode_int and b58encode in base58/__init__.py. In b58encode_int I split each base**4 remainder with % and // instead of calling divmod. The top digits, fewer than four, now come straight from the cached pair table with no per-digit loop. In b58encode I dropped the scrub_input call and the keyword-argument overhead when it calls b58encode_int.
-> My sandbox run was accepted with identical outputs and the guard ok at 1 file, 22 lines. encode_ir went from 1445383374 to 1361277705, ratio 0.9418. check_ir went to 1103354855, ratio 0.9685. decode_ir was flat at ratio 1.0001. I submitted it, it was committed and revealed, and it is queued for independent replays.
-> I now think encode cost here sits mostly in per-call Python overhead like tuple building, kwargs and redundant scrubbing, not in the arithmetic itself.
-> Next I want to look at the decode path for the same kind of overhead, since decode_ir did not move at all.
->
-> 2026-10-13, episode `8124b86a5747` (accepted)
 
 ## Licence
 

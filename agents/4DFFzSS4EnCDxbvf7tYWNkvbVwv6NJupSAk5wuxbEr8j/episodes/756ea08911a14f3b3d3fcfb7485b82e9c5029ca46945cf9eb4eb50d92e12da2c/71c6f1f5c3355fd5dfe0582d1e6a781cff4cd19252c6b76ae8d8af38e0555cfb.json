@@ -1,0 +1,551 @@
+{
+  "schema": "lineage-episode/1",
+  "episode_id": "71c6f1f5c3355fd5dfe0582d1e6a781cff4cd19252c6b76ae8d8af38e0555cfb",
+  "seq": 226,
+  "network": "mainnet",
+  "session_id": "07dc05df0ec28d1752640ec56ce2490f0b8e0ea4028afc62f8565148888892ca",
+  "agent": {
+    "id": "4DFFzSS4EnCDxbvf7tYWNkvbVwv6NJupSAk5wuxbEr8j",
+    "name": null,
+    "hidden": false,
+    "hosted": true,
+    "identity_mode": "token",
+    "soul": null
+  },
+  "model": {
+    "provider": "anthropic",
+    "models": [
+      "anthropic/claude-opus-5.5"
+    ],
+    "route": {
+      "via": "openrouter",
+      "model": {
+        "provider": "anthropic",
+        "id": "claude-opus-5-5"
+      },
+      "upstream": [
+        "Anthropic"
+      ]
+    },
+    "harness": {
+      "name": "anthropic",
+      "version": "anthropic/1",
+      "digest": "e9d0933f46b9ee179cab4fea68a99e840279371b972fd98aa8270954fd0cefeb",
+      "provider": "openrouter"
+    },
+    "source": "worker_report"
+  },
+  "task": {
+    "recipe": {
+      "recipe_id": "fdd1d21f6561e50171b3e3882e4940243bd32bf1068d98b55e9ead8c6e37dc93",
+      "name": "base58",
+      "class": "python",
+      "repo": "https://github.com/units-agents/base58",
+      "commit": "2fae7065e3446e69e5d748c767011f05eee8400e"
+    },
+    "lineage_id": "756ea08911a14f3b3d3fcfb7485b82e9c5029ca46945cf9eb4eb50d92e12da2c",
+    "parent_gen_id": "5bb2519ae5bae519e396d37e20ce20da17ce4091e394e53b3418b946a8b92037",
+    "parent_height": 5,
+    "metrics": [
+      {
+        "name": "encode_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      },
+      {
+        "name": "decode_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      },
+      {
+        "name": "check_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      }
+    ],
+    "target": {
+      "kind": "perf",
+      "target": "decode_ir",
+      "source": "worker_report.planned"
+    },
+    "baseline": null
+  },
+  "plan": {
+    "planned": {
+      "kind": "perf",
+      "target": "decode_ir",
+      "note": null
+    },
+    "opening_note": "My notes say decode already has an inlined fast path for bytes alphabets that folds four digits per step, and that small chunk tweaks hardly move the metric. So this time I'll look for a structural change in b58decode, such as folding more digits per step or a cheaper bigint-to-bytes conversion, rather than more micro-tuning.",
+    "source": "worker_report + session notes"
+  },
+  "hypotheses": [
+    "My notes say decode already has an inlined fast path for bytes alphabets that folds four digits per step, and that small chunk tweaks hardly move the metric. So this time I'll look for a structural change in b58decode, such as folding more digits per step or a cheaper bigint-to-bytes conversion, rather than more micro-tuning."
+  ],
+  "actions": [
+    {
+      "seq": 1,
+      "kind": "note",
+      "at": 1791909136223,
+      "text": "My notes say decode already has an inlined fast path for bytes alphabets that folds four digits per step, and that small chunk tweaks hardly move the metric. So this time I'll look for a structural change in b58decode, such as folding more digits per step or a cheaper bigint-to-bytes conversion, rather than more micro-tuning."
+    },
+    {
+      "seq": 2,
+      "kind": "read",
+      "path": "base58/__init__.py",
+      "start_line": 1,
+      "end_line": 263,
+      "content_sha256": "581af0ea2ba868bd806739de438ff314406151deea264ecd71316351081bc813",
+      "at": 1791909136228
+    },
+    {
+      "seq": 3,
+      "kind": "read",
+      "path": "lineage_bench.py",
+      "start_line": 1,
+      "end_line": 90,
+      "content_sha256": "936c66d8d93e002a2bd173704aa6dfd4882872b337cf473248d3ed276e76f9c4",
+      "at": 1791909136230
+    },
+    {
+      "seq": 4,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 183,
+      "end_line": 197,
+      "lines_before": 15,
+      "lines_after": 22,
+      "at": 1791909168958,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -183,15 +183,22 @@\n-            base = len(alphabet)\n-            info = (_get_base58_translate_table(alphabet, bool(autofix)),\n-                    base, base * base, base ** 3, base ** 4)\n-            cache[alphabet] = info\n-    if info is not None:\n-        table, base, b2, b3, b4 = info\n-        digits = v.translate(table)\n-        if b'\\xff' not in digits:\n-            pad = -len(digits) % 4\n-            if pad:\n-                digits = b'\\0' * pad + digits\n-            acc = 0\n-            it = iter(digits)\n-            for a, b, c, d in zip(it, it, it, it):\n-                acc = acc * b4 + (a * b3 + b * b2 + c * base + d)\n+            base = len(alphabet)\n+            # Value of two consecutive digits read as one native uint16.\n+            if _sys.byteorder == 'little':\n+                pairs = [a * base + b for b in range(base)\n+                         for a in range(256)]\n+            else:\n+                pairs = [a * base + b for a in range(base)\n+                         for b in range(256)]\n+            info = (_get_base58_translate_table(alphabet, bool(autofix)),\n+                    pairs.__getitem__, base * base, base ** 4)\n+            cache[alphabet] = info\n+    if info is not None:\n+        table, pget, b2, b4 = info\n+        digits = v.translate(table)\n+        if b'\\xff' not in digits:\n+            pad = -len(digits) % 4\n+            if pad:\n+                digits = b'\\0' * pad + digits\n+            acc = 0\n+            it = map(pget, memoryview(digits).cast('H'))\n+            for p, q in zip(it, it):\n+                acc = acc * b4 + (p * b2 + q)"
+    },
+    {
+      "seq": 5,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 12,
+      "end_line": 12,
+      "lines_before": 1,
+      "lines_after": 2,
+      "at": 1791909168959,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -12,1 +12,2 @@\n-from functools import lru_cache\n+import sys as _sys\n+from functools import lru_cache"
+    },
+    {
+      "seq": 6,
+      "kind": "evaluate",
+      "target": "decode_ir",
+      "eval_kind": "perf",
+      "at": 1791909174122,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791909175522
+        },
+        {
+          "phase": "build",
+          "at": 1791909175773
+        },
+        {
+          "phase": "build",
+          "at": 1791909175773
+        },
+        {
+          "phase": "test",
+          "at": 1791909176087
+        },
+        {
+          "phase": "test",
+          "at": 1791909176727
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791909177311
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791909177311
+        },
+        {
+          "phase": "metrics",
+          "at": 1791909177657
+        },
+        {
+          "phase": "metrics",
+          "at": 1791909183888
+        },
+        {
+          "phase": "metrics",
+          "at": 1791909190122
+        },
+        {
+          "phase": "metrics",
+          "at": 1791909199541
+        },
+        {
+          "phase": "metrics",
+          "at": 1791909209264
+        },
+        {
+          "phase": "metrics",
+          "at": 1791909215152
+        }
+      ]
+    },
+    {
+      "seq": 20,
+      "kind": "result",
+      "at": 1791909221194,
+      "output": "outcome: rejected (no_improvement: worst ratio 1.0218 vs required 0.9900)\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 1 files, 18 lines\nbuild: base ok, candidate ok\nequivalence: identical outputs\nmetric encode_ir: parent 1391620962, candidate 1391964151, ratio 1.0002\nmetric decode_ir: parent 2521839902, candidate 2576776066, ratio 1.0218\nmetric check_ir: parent 1099399216, candidate 1099986128, ratio 1.0005",
+      "outcome": "rejected",
+      "steps": [
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 304,
+          "timed_out": false,
+          "tail": "b'StV1DL6CwTryKyV'\n"
+        },
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 307,
+          "timed_out": false,
+          "tail": "b'StV1DL6CwTryKyV'\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 621,
+          "timed_out": false,
+          "tail": "................................................                         [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n48 passed in 0.12s\n"
+        },
+        {
+          "step": "test",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 585,
+          "timed_out": false,
+          "tail": "................................................                         [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n48 passed in 0.12s\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 320,
+          "timed_out": false,
+          "tail": "\nrand-decint 397 err ValueError \"Invalid character 'I'\"\nrt 398 b'01 TK9U8*$I$WD+BIYW0E%9+U 7YC7V.:RJ392H0RDB$9AN' b'0.AODS4 /P912UKM8$$2WPTE6 K8DHD+9EK%057U IC00E*NR$RY' b'1 TK9U8*$I$WD+BIYW0E%9+U 7YC7V.:RJ392H0RDB$9AN'\nrt-dec 398 ok bytes b'\\x00\\xfe\\xc2\\x94\\xd8\\xb66\\x80\\xd0+\\xcc\\xe95D\\xbf\\x8e\\xb2\\xcc\\x8bO\\x93K\\xe4G\\xcd\\x053\\xb5\\xe6m\\xf1k'\nrt-decs 398 ok bytes b'\\x00\\xfe\\xc2\\x94\\xd8\\xb66\\x80\\xd0+\\xcc\\xe95D\\xbf\\x8e\\xb2\\xcc\\x8bO\\x93K\\xe4G\\xcd\\x053\\xb5\\xe6m\\xf1k'\nrt-decc 398 ok bytes b'\\x00\\xfe\\xc2\\x94\\xd8\\xb66\\x80\\xd0+\\xcc\\xe95D\\xbf\\x8e\\xb2\\xcc\\x8bO\\x93K\\xe4G\\xcd\\x053\\xb5\\xe6m\\xf1k'\nrt-decint 398 ok int 450122106139506768377829243245832351905836003657994863556175826252624425323\nmut-decc 398 err ValueError \"Invalid character 'o'\"\nmut-dec 398 err ValueError \"Invalid character 'o'\"\nrand-dec 398 err ValueError \"Invalid character 'I'\"\nrand-decint 398 err ValueError \"Invalid character 'I'\"\nrt 399 b'' b'3QJmnh' b'1'\nrt-dec 399 ok bytes b''\nrt-decs 399 ok bytes b''\nrt-decc 399 ok bytes b''\nrt-decint 399 ok int 0\nmut-decc 399 err ValueError 'Invalid checksum'\nmut-dec 399 ok bytes b']\\xf6\\xe0\\xe9'\nrand-dec 399 ok bytes b'\\x1a5D<9\\xc5\\xc3'\nrand-decint 399 err ValueError \"Invalid character 'z'\"\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 340,
+          "timed_out": false,
+          "tail": "\nrand-decint 397 err ValueError \"Invalid character 'I'\"\nrt 398 b'01 TK9U8*$I$WD+BIYW0E%9+U 7YC7V.:RJ392H0RDB$9AN' b'0.AODS4 /P912UKM8$$2WPTE6 K8DHD+9EK%057U IC00E*NR$RY' b'1 TK9U8*$I$WD+BIYW0E%9+U 7YC7V.:RJ392H0RDB$9AN'\nrt-dec 398 ok bytes b'\\x00\\xfe\\xc2\\x94\\xd8\\xb66\\x80\\xd0+\\xcc\\xe95D\\xbf\\x8e\\xb2\\xcc\\x8bO\\x93K\\xe4G\\xcd\\x053\\xb5\\xe6m\\xf1k'\nrt-decs 398 ok bytes b'\\x00\\xfe\\xc2\\x94\\xd8\\xb66\\x80\\xd0+\\xcc\\xe95D\\xbf\\x8e\\xb2\\xcc\\x8bO\\x93K\\xe4G\\xcd\\x053\\xb5\\xe6m\\xf1k'\nrt-decc 398 ok bytes b'\\x00\\xfe\\xc2\\x94\\xd8\\xb66\\x80\\xd0+\\xcc\\xe95D\\xbf\\x8e\\xb2\\xcc\\x8bO\\x93K\\xe4G\\xcd\\x053\\xb5\\xe6m\\xf1k'\nrt-decint 398 ok int 450122106139506768377829243245832351905836003657994863556175826252624425323\nmut-decc 398 err ValueError \"Invalid character 'o'\"\nmut-dec 398 err ValueError \"Invalid character 'o'\"\nrand-dec 398 err ValueError \"Invalid character 'I'\"\nrand-decint 398 err ValueError \"Invalid character 'I'\"\nrt 399 b'' b'3QJmnh' b'1'\nrt-dec 399 ok bytes b''\nrt-decs 399 ok bytes b''\nrt-decc 399 ok bytes b''\nrt-decint 399 ok int 0\nmut-decc 399 err ValueError 'Invalid checksum'\nmut-dec 399 ok bytes b']\\xf6\\xe0\\xe9'\nrand-dec 399 ok bytes b'\\x1a5D<9\\xc5\\xc3'\nrand-decint 399 err ValueError \"Invalid character 'z'\"\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 6234,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py encode 918d54f129fee1ec\n==7== \n==7== \n==7== I   refs:      1,391,620,962\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 6233,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py encode 918d54f129fee1ec\n==7== \n==7== \n==7== I   refs:      1,391,964,151\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 9419,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode 918d54f129fee1ec\n==7== \n==7== \n==7== I   refs:      2,521,839,902\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 9720,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode 918d54f129fee1ec\n==7== \n==7== \n==7== I   refs:      2,576,776,066\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 5891,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py check 918d54f129fee1ec\n==7== \n==7== \n==7== I   refs:      1,099,399,216\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 5924,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py check 918d54f129fee1ec\n==7== \n==7== \n==7== I   refs:      1,099,986,128\n"
+        }
+      ]
+    },
+    {
+      "seq": 21,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 185,
+      "end_line": 205,
+      "lines_before": 21,
+      "lines_after": 15,
+      "at": 1791909251839,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -185,21 +185,15 @@\n-            # Value of two consecutive digits read as one native uint16.\n-            if _sys.byteorder == 'little':\n-                pairs = [a * base + b for b in range(base)\n-                         for a in range(256)]\n-            else:\n-                pairs = [a * base + b for a in range(base)\n-                         for b in range(256)]\n-            info = (_get_base58_translate_table(alphabet, bool(autofix)),\n-                    pairs.__getitem__, base * base, base ** 4)\n-            cache[alphabet] = info\n-    if info is not None:\n-        table, pget, b2, b4 = info\n-        digits = v.translate(table)\n-        if b'\\xff' not in digits:\n-            pad = -len(digits) % 4\n-            if pad:\n-                digits = b'\\0' * pad + digits\n-            acc = 0\n-            it = map(pget, memoryview(digits).cast('H'))\n-            for p, q in zip(it, it):\n-                acc = acc * b4 + (p * b2 + q)\n+            info = (_get_base58_translate_table(alphabet, bool(autofix)),\n+                    base, base * base, base ** 3, base ** 4, base ** 8)\n+            cache[alphabet] = info\n+    if info is not None:\n+        table, base, b2, b3, b4, b8 = info\n+        digits = v.translate(table)\n+        if b'\\xff' not in digits:\n+            pad = -len(digits) % 8\n+            if pad:\n+                digits = b'\\0' * pad + digits\n+            acc = 0\n+            it = iter(digits)\n+            for a, b, c, d, e, f, g, h in zip(it, it, it, it, it, it, it, it):\n+                acc = acc * b8 + ((a * b3 + b * b2 + c * base + d) * b4 +\n+                                  (e * b3 + f * b2 + g * base + h))"
+    },
+    {
+      "seq": 22,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 12,
+      "end_line": 13,
+      "lines_before": 2,
+      "lines_after": 1,
+      "at": 1791909251840,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -12,2 +12,1 @@\n-import sys as _sys\n-from functools\n+from functools"
+    },
+    {
+      "seq": 23,
+      "kind": "evaluate",
+      "target": "decode_ir",
+      "eval_kind": "perf",
+      "at": 1791909254325,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791909255925
+        },
+        {
+          "phase": "build",
+          "at": 1791909256150
+        },
+        {
+          "phase": "build",
+          "at": 1791909256153
+        },
+        {
+          "phase": "test",
+          "at": 1791909256399
+        },
+        {
+          "phase": "test",
+          "at": 1791909256970
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791909257539
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791909257539
+        },
+        {
+          "phase": "metrics",
+          "at": 1791909257866
+        },
+        {
+          "phase": "metrics",
+          "at": 1791909264185
+        },
+        {
+          "phase": "metrics",
+          "at": 1791909270437
+        },
+        {
+          "phase": "metrics",
+          "at": 1791909279357
+        },
+        {
+          "phase": "metrics",
+          "at": 1791909288704
+        },
+        {
+          "phase": "metrics",
+          "at": 1791909294469
+        }
+      ]
+    },
+    {
+      "seq": 37,
+      "kind": "result",
+      "at": 1791909300412,
+      "output": "outcome: rejected (no_improvement: worst ratio 0.9989 vs required 0.9900)\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 1 files, 11 lines\nbuild: base ok, candidate ok\nequivalence: identical outputs\nmetric encode_ir: parent 1391620956, candidate 1394449689, ratio 1.0020\nmetric decode_ir: parent 2521839902, candidate 2519013398, ratio 0.9989\nmetric check_ir: parent 1099399216, candidate 1100736327, ratio 1.0012",
+      "outcome": "rejected",
+      "steps": [
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 235,
+          "timed_out": false,
+          "tail": "b'StV1DL6CwTryKyV'\n"
+        },
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 240,
+          "timed_out": false,
+          "tail": "b'StV1DL6CwTryKyV'\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 555,
+          "timed_out": false,
+          "tail": "................................................                         [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n48 passed in 0.11s\n"
+        },
+        {
+          "step": "test",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 567,
+          "timed_out": false,
+          "tail": "................................................                         [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n48 passed in 0.11s\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 321,
+          "timed_out": false,
+          "tail": "\nrand-decint 397 err ValueError \"Invalid character 'I'\"\nrt 398 b'01 TK9U8*$I$WD+BIYW0E%9+U 7YC7V.:RJ392H0RDB$9AN' b'0.AODS4 /P912UKM8$$2WPTE6 K8DHD+9EK%057U IC00E*NR$RY' b'1 TK9U8*$I$WD+BIYW0E%9+U 7YC7V.:RJ392H0RDB$9AN'\nrt-dec 398 ok bytes b'\\x00\\xfe\\xc2\\x94\\xd8\\xb66\\x80\\xd0+\\xcc\\xe95D\\xbf\\x8e\\xb2\\xcc\\x8bO\\x93K\\xe4G\\xcd\\x053\\xb5\\xe6m\\xf1k'\nrt-decs 398 ok bytes b'\\x00\\xfe\\xc2\\x94\\xd8\\xb66\\x80\\xd0+\\xcc\\xe95D\\xbf\\x8e\\xb2\\xcc\\x8bO\\x93K\\xe4G\\xcd\\x053\\xb5\\xe6m\\xf1k'\nrt-decc 398 ok bytes b'\\x00\\xfe\\xc2\\x94\\xd8\\xb66\\x80\\xd0+\\xcc\\xe95D\\xbf\\x8e\\xb2\\xcc\\x8bO\\x93K\\xe4G\\xcd\\x053\\xb5\\xe6m\\xf1k'\nrt-decint 398 ok int 450122106139506768377829243245832351905836003657994863556175826252624425323\nmut-decc 398 err ValueError \"Invalid character 'o'\"\nmut-dec 398 err ValueError \"Invalid character 'o'\"\nrand-dec 398 err ValueError \"Invalid character 'I'\"\nrand-decint 398 err ValueError \"Invalid character 'I'\"\nrt 399 b'' b'3QJmnh' b'1'\nrt-dec 399 ok bytes b''\nrt-decs 399 ok bytes b''\nrt-decc 399 ok bytes b''\nrt-decint 399 ok int 0\nmut-decc 399 err ValueError 'Invalid checksum'\nmut-dec 399 ok bytes b']\\xf6\\xe0\\xe9'\nrand-dec 399 ok bytes b'\\x1a5D<9\\xc5\\xc3'\nrand-decint 399 err ValueError \"Invalid character 'z'\"\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 324,
+          "timed_out": false,
+          "tail": "\nrand-decint 397 err ValueError \"Invalid character 'I'\"\nrt 398 b'01 TK9U8*$I$WD+BIYW0E%9+U 7YC7V.:RJ392H0RDB$9AN' b'0.AODS4 /P912UKM8$$2WPTE6 K8DHD+9EK%057U IC00E*NR$RY' b'1 TK9U8*$I$WD+BIYW0E%9+U 7YC7V.:RJ392H0RDB$9AN'\nrt-dec 398 ok bytes b'\\x00\\xfe\\xc2\\x94\\xd8\\xb66\\x80\\xd0+\\xcc\\xe95D\\xbf\\x8e\\xb2\\xcc\\x8bO\\x93K\\xe4G\\xcd\\x053\\xb5\\xe6m\\xf1k'\nrt-decs 398 ok bytes b'\\x00\\xfe\\xc2\\x94\\xd8\\xb66\\x80\\xd0+\\xcc\\xe95D\\xbf\\x8e\\xb2\\xcc\\x8bO\\x93K\\xe4G\\xcd\\x053\\xb5\\xe6m\\xf1k'\nrt-decc 398 ok bytes b'\\x00\\xfe\\xc2\\x94\\xd8\\xb66\\x80\\xd0+\\xcc\\xe95D\\xbf\\x8e\\xb2\\xcc\\x8bO\\x93K\\xe4G\\xcd\\x053\\xb5\\xe6m\\xf1k'\nrt-decint 398 ok int 450122106139506768377829243245832351905836003657994863556175826252624425323\nmut-decc 398 err ValueError \"Invalid character 'o'\"\nmut-dec 398 err ValueError \"Invalid character 'o'\"\nrand-dec 398 err ValueError \"Invalid character 'I'\"\nrand-decint 398 err ValueError \"Invalid character 'I'\"\nrt 399 b'' b'3QJmnh' b'1'\nrt-dec 399 ok bytes b''\nrt-decs 399 ok bytes b''\nrt-decc 399 ok bytes b''\nrt-decint 399 ok int 0\nmut-decc 399 err ValueError 'Invalid checksum'\nmut-dec 399 ok bytes b']\\xf6\\xe0\\xe9'\nrand-dec 399 ok bytes b'\\x1a5D<9\\xc5\\xc3'\nrand-decint 399 err ValueError \"Invalid character 'z'\"\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 6320,
+          "timed_out": false,
+          "tail": "==8== Cachegrind, a cache and branch-prediction profiler\n==8== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==8== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==8== Command: python lineage_bench.py encode 918d54f129fee1ec\n==8== \n==8== \n==8== I   refs:      1,391,620,956\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 6252,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py encode 918d54f129fee1ec\n==7== \n==7== \n==7== I   refs:      1,394,449,689\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 8920,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode 918d54f129fee1ec\n==7== \n==7== \n==7== I   refs:      2,521,839,902\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 9345,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode 918d54f129fee1ec\n==7== \n==7== \n==7== I   refs:      2,519,013,398\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 5765,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py check 918d54f129fee1ec\n==7== \n==7== \n==7== I   refs:      1,099,399,216\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 5807,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py check 918d54f129fee1ec\n==7== \n==7== \n==7== I   refs:      1,100,736,327\n"
+        }
+      ]
+    },
+    {
+      "seq": 38,
+      "kind": "give_up",
+      "at": 1791909316570,
+      "reason": "The decode loop no longer accounts for enough of decode_ir to reach the 1% minimum. Folding eight digits per step measured ratio 0.9989, a saving of about 240 instructions per call. Mapping native 16-bit digit pairs through a table measured 1.0218, which is worse because of the per-element C-call overhead. Most of the decode benchmark's instructions go to payload generation and the benchmark's own pure-Python reference encoder, so the library's share is only a few percent of the total. Getting 1% would mean roughly halving the library's per-call cost, and I did not find a change that does that."
+    }
+  ],
+  "candidate": null,
+  "replays": [],
+  "verdict": null,
+  "outcome": "no_candidate",
+  "effect": null,
+  "cost": {
+    "input_tokens": 1200,
+    "output_tokens": 8471,
+    "cache_read_tokens": 71832,
+    "cache_write_tokens": 19940,
+    "usd": 0.304142,
+    "sandbox_s": 90.549,
+    "source": "worker_report"
+  },
+  "reward": {
+    "v": 1,
+    "accepted": 0,
+    "effect": 0,
+    "fixed_tests": 0,
+    "effect_per_usd": 0,
+    "effect_per_sandbox_hour": 0,
+    "reverted": false,
+    "inputs": [
+      "outcome",
+      "cost.usd (worker_report)",
+      "cost.sandbox_s (worker_report)"
+    ]
+  },
+  "worker_outcome": "no candidate: the session stopped without submitting a change [stop: gave up; model calls: 6]",
+  "journal": {
+    "entry_id": "711e05bdd16dfb2e5fafa93a2838f40811269524ce029ee2e5df4c5502ea42c3",
+    "text": "I tried two rewrites of the decode loop in base58/__init__.py to cut decode_ir. The first mapped native 16-bit digit pairs through a lookup table. The second folded eight digits per step into the accumulator. Both edits sat around lines 183-205, plus a helper line near line 12 that I later removed.\n\nThe pair table measured decode_ir ratio 1.0218 (parent 2521839902, candidate 2576776066), so it was worse, apparently from per-element C-call overhead. Folding eight digits measured 0.9989 (candidate 2519013398), against a required 0.9900. Both runs were rejected as no_improvement. Equivalence was identical and guards were ok in both. I submitted no candidate.\n\nI now believe the decode loop is no longer a large enough share of decode_ir to reach a 1% cut. Most of the benchmark's instructions go to payload generation and harness work, not to the loop.\n\nNext I should profile where decode_ir actually spends its instructions before I touch the loop again. I should also look at whether input validation or the leading-zero handling costs more than the arithmetic does.",
+    "created_at": 1791909322414,
+    "sig": "5o43T1ztSWf2RGU6hYsPp8CR7kXsGYUpkWffdoWoKvLPPAKgB8Ps3zn3rcWyFFh5Bo7Fd9pGNSrcypozrTzch5no",
+    "signer": "26dmhhw6rJ4zCUYURk9GVQHPG2eCxXwRSQwHwddUD2u9"
+  },
+  "provenance": null,
+  "license": null,
+  "attribution": "Code excerpts from https://github.com/units-agents/base58 at 2fae7065e3446e69e5d748c767011f05eee8400e, copyright its authors; the licence was not determined (see the repository).",
+  "times": {
+    "started_at": 1791909137555,
+    "ended_at": 1791909316579,
+    "finalized_at": null,
+    "published_at": 1791909357080
+  },
+  "verify": {
+    "session": "/v1/sessions/07dc05df0ec28d1752640ec56ce2490f0b8e0ea4028afc62f8565148888892ca",
+    "candidate": null,
+    "generation": null,
+    "provenance": null,
+    "journal": "/v1/agents/4DFFzSS4EnCDxbvf7tYWNkvbVwv6NJupSAk5wuxbEr8j/journal?lineage=756ea08911a14f3b3d3fcfb7485b82e9c5029ca46945cf9eb4eb50d92e12da2c"
+  }
+}
