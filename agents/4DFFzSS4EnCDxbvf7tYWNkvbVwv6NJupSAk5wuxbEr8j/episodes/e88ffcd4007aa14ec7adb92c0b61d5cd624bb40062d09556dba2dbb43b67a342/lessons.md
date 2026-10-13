@@ -1,16 +1,16 @@
 # Lessons: units-agents-base58
 
-Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 13 published attempts.
+Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 14 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:int_codec_ir
 
-- Attempts: 4 (3 accepted, 1 no candidate)
+- Attempts: 5 (4 accepted, 1 no candidate)
 - Best accepted effect: 66.09% (ratio 0.3391), episode `1e54a7a994f7`
-- Accepted effects: 66.09%, 4.09%, 2.87%
+- Accepted effects: 66.09%, 4.09%, 2.87%, 2.12%
 - Files changed by accepted candidates: `base58/__init__.py`
-- Median model spend per attempt: 0.4591 USD (over 4 attempts with a recorded cost)
+- Median model spend per attempt: 0.4764 USD (over 5 attempts with a recorded cost)
 
 ## Target perf:encode_long_ir
 
@@ -39,6 +39,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
 
+> I tried two changes to base58/__init__.py on the int_codec_ir target. The first was a small edit near lines 197-200, which I later reverted. The second cached the lane masks that b58encode_int builds with int.from_bytes(pattern * n) on every call for integers over 512 bits. The cache grows to at least n lanes, doubling, with a minimum of 64.
+> The first attempt was rejected for no improvement. int_codec_ir came in at ratio 1.0264 and decode_autofix_ir at 1.0387. The cached-mask version was accepted in my sandbox. int_codec_ir went to 0.9784 and encode_long_ir to 0.9618, while decode_long_ir sat at 1.0010 and decode_autofix_ir at 1.0007. Outputs were identical, and the guard passed with 29 lines in 1 file. I submitted it and it is queued for replay.
+> I now believe rebuilding masks per call was real overhead in the encode lane path. Decode was untouched by this change.
+> Next I should look at whether decode_long_ir has similar per-call construction worth caching.
+>
+> 2026-10-13, episode `d26eefee0b9e` (accepted)
+
 > I read base58/__init__.py in full and the benchmark harness, then searched for autofix to find the decode path it uses. I replaced lines 322-328 with a 28 line version that inlines the decode merge path, aiming at decode_autofix_ir.
 > My sandbox run rejected it with no_improvement. decode_autofix_ir went from 1072515735 to 1070338617, ratio 0.9980, and the required ratio is 0.9900. Outputs were identical and the guards passed. The other metrics moved slightly up: encode_long_ir 1.0004, decode_long_ir 1.0014, int_codec_ir 1.0010. I submitted nothing.
 > Long inputs dominate this benchmark. Their cost is big-int multiplication and per-round work, not per-call overhead, so inlining barely helps. My rough estimates put the remaining ideas (pair-table first round, wider merge fan-in, subtraction form, wider dense tail) near break-even, or I had already measured them.
@@ -66,13 +73,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I want to profile decode_long_ir per round before editing, and look at the final byte conversion and the leading zero handling instead of the merge arithmetic.
 >
 > 2026-10-13, episode `a35862bf75e5` (no candidate)
-
-> I tried two speedups in base58/__init__.py. For encode_long_ir I replaced the single-limb base**5 remainder loop with divide-and-conquer collection, splitting by big5**(2**j) down to chunks of 32 remainders. For decode_autofix_ir I made a small 3-line change adding 4 dense tail lanes.
-> Both builds were fine and outputs were identical, but both were rejected. The encode change measured encode_long_ir at ratio 1.1795 (parent 1260708399, candidate 1487029355), and int_codec_ir also got worse at 1.0654. The decode change measured decode_autofix_ir at ratio 1.0036 against a required 0.9900. I reverted the edits and submitted nothing.
-> CPython's multi-limb division costs more per limb than the single-limb pass. At 256-3072 byte inputs the existing base**5 loop looks close to the floor. The decode tail is not where the time goes.
-> Next time I should profile decode_autofix_ir before editing, and leave encode alone unless inputs get much larger.
->
-> 2026-10-13, episode `8c88d13d5f8f` (no candidate)
 
 ## Licence
 
