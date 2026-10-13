@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 32 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 33 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -14,11 +14,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:train_regex_ir
 
-- Attempts: 8 (8 accepted)
+- Attempts: 9 (9 accepted)
 - Best accepted effect: 74.51% (ratio 0.2549), episode `c136f56d3fa3`
-- Accepted effects: 74.51%, 25.49%, 18.03%, 9.45%, 9.22%, 7.25%, 1.78%, 1.48%
+- Accepted effects: 74.51%, 25.49%, 18.03%, 9.45%, 9.22%, 7.25%, 1.78%, 1.48%, 1.31%
 - Files changed by accepted candidates: `minbpe/regex.py`
-- Median model spend per attempt: 0.1649 USD (over 8 attempts with a recorded cost)
+- Median model spend per attempt: 0.1680 USD (over 9 attempts with a recorded cost)
 
 ## Target perf:train_basic_ir
 
@@ -49,6 +49,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
 
+> I worked on RegexTokenizer.train in minbpe/regex.py. Chunk occurrence counts now come from collections.Counter. The pair-to-chunk index `where` holds lists filled with append instead of sets. Stale or repeated indices are skipped, because splitting an already-merged chunk on the pair gives a single part.
+> The first attempt changed 8 lines and was rejected. train_regex_ir went from 380184548 to 378898059, ratio 0.9966, short of the required 0.9900. The second version changed 45 lines and was accepted in my sandbox. train_regex_ir went to 375397090, ratio 0.9874, with identical outputs. encode_ir moved to ratio 1.0038 and train_basic_ir to 1.0020, both within guard limits. I submitted it. It is queued for independent replay.
+> I believe set maintenance in `where` was a real cost but not the main one. The gain is small.
+> Next I will profile the merge loop itself, the per-chunk split and rebuild. I also want to check whether the encode_ir drift is noise.
+>
+> 2026-10-13, episode `456da14462c0` (accepted)
+
 > I changed the decode cache validation in minbpe/regex.py and minbpe/basic.py. The old check compared the vocab dict on every call. The new check compares a key list and a value list instead. The bench decodes the same three 100k-id lists 12 times, so most calls already return from the same-object cache.
 > Outputs were identical. decode_ir went from 563301959 to 564637277, ratio 1.0024, against a required 0.9900. Rejected for no improvement. Other metrics also rose slightly: encode_ir 1.0039, train_regex_ir 1.0017, train_basic_ir 1.0016, save_load_ir 1.0009. The change did not help. I submitted nothing.
 > Library work in decode_ir is mostly the three full decodes plus load. The cache hit path is a small share of the ~563M count. Making validation cheaper does not move it.
@@ -76,13 +83,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I would look at the split and join of parts itself, and check whether the decode_ir change at 1.0025 is just noise.
 >
 > 2026-10-13, episode `5c4143b06684` (accepted)
-
-> I tried to speed up decode_ir in RegexTokenizer.decode in minbpe/regex.py and BasicTokenizer.decode in minbpe/basic.py. Both build bytes with a per-id list comprehension. I replaced it with C-level gathering, first map(list.__getitem__, ids), then itemgetter(*ids) guarded by a min(ids) >= 0 check.
-> The map version gave decode_ir 534740414 against parent 478309377, ratio 1.1180. The itemgetter version gave 496327966 against 478309383, ratio 1.0377. Both had identical outputs and both were rejected for no improvement against the required 0.9900. Other metrics moved slightly up, encode_ir worst at 1.0042. Neither change helped. I reverted the edits and submitted nothing.
-> The list comprehension is not the cost I thought it was. The cached decode paths already skip the full decode on repeated calls, so the full path may be a small part of decode_ir.
-> Next I will profile decode_ir in lineage_bench.py to see where the instructions go before editing decode again.
->
-> 2026-10-13, episode `9353e90ecee7` (no candidate)
 
 ## Licence
 
