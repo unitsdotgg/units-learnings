@@ -1,16 +1,16 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 42 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 47 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:save_load_ir
 
-- Attempts: 4 (3 accepted, 1 no candidate)
+- Attempts: 5 (4 accepted, 1 no candidate)
 - Best accepted effect: 12.33% (ratio 0.8767), episode `9671a1690038`
-- Accepted effects: 12.33%, 11.10%, 4.64%
+- Accepted effects: 12.33%, 11.10%, 4.72%, 4.64%
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.2655 USD (over 4 attempts with a recorded cost)
+- Median model spend per attempt: 0.3032 USD (over 5 attempts with a recorded cost)
 
 ## Target perf:train_regex_ir
 
@@ -30,59 +30,59 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 6 (4 accepted, 2 no candidate)
+- Attempts: 7 (4 accepted, 3 no candidate)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
 - Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.2920 USD (over 6 attempts with a recorded cost)
+- Median model spend per attempt: 0.3708 USD (over 7 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
-- Attempts: 10 (8 no candidate, 1 rejected, 1 accepted)
+- Attempts: 13 (11 no candidate, 1 rejected, 1 accepted)
 - Best accepted effect: 1.11% (ratio 0.9889), episode `b45e5d23eac5`
 - Why candidates failed: no_improvement (1)
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`
 - Files changed by rejected candidates: `minbpe/base.py`, `minbpe/basic.py`
-- Median model spend per attempt: 0.4593 USD (over 10 attempts with a recorded cost)
+- Median model spend per attempt: 0.4542 USD (over 13 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
 
-> I changed BasicTokenizer.train in minbpe/basic.py. It built the initial pair counts by concatenating each adjacent character pair into a new 2-char str and hashing it, one per input byte. Now the raw bytes are read through memoryview.cast("H") at even and odd offsets, so each pair is counted in C as a 16-bit int. Byte order is checked once at import. Only the distinct pairs are converted back to the same 2-char str keys afterward. There were four edits, 16 changed lines.
-> In my sandbox, train_basic_ir went from 277759137 to 265761025, ratio 0.9568. Outputs were identical. The other metrics barely moved: train_regex_ir 1.0014, encode_ir 1.0021, decode_ir 0.9986, save_load_ir 1.0010. The guard was ok. I submitted it, and it is waiting on replays.
-> The initial count was per-byte Python work. The merge loop after it is untouched and probably holds most of the remaining cost.
-> Next I will read the merge loop in basic.py and measure how much each merge step costs on its own.
+> I tried two changes to the encode path in minbpe/regex.py, near lines 442-451. The first skipped str.replace for merges whose child characters were absent, checked against a set of characters present in the joined string. The second built ids with list(chain.from_iterable(...)) in place of the existing loop.
+> The first variant measured encode_ir at 662379078 against a parent of 645140539, ratio 1.0267. It was rejected for no improvement. Outputs were identical. The second measured 652538001, ratio 1.0115, and was also rejected. Neither change helped, so I reverted both and regex.py is back to the parent. I submitted no candidate.
+> Building set() over the UCS-2 joined string allocates a str for every character above U+00FF. The skip rarely fires, so the set costs more than it saves. The replace chain is already cheap per merge.
+> Next time, profile _encode_chunk before editing. I should look for work that runs every time, not checks that guard against a rare case.
 >
-> 2026-10-13, episode `fc4f1f7c55f3` (accepted)
+> 2026-10-13, episode `c17a2b88a238` (no candidate)
 
-> I tried to speed up decode in minbpe/regex.py and minbpe/basic.py. The first variant added an upfront min(ids) check, then b"".join(map(lookup.__getitem__, ids)). The second kept the check and used b"".join(itemgetter(*ids)(lookup)), with itemgetter imported at the top of regex.py.
-> Both made decode_ir worse. Outputs were identical in both. Variant 1: decode_ir went from 525753737 to 583119205, ratio 1.1091. Variant 2: 525753737 to 542684863, ratio 1.0322. Both were rejected against a required 0.9900. Every other guarded metric stayed within its limit. I reverted all edits and submitted nothing.
-> The existing inlined list comprehension does list[int] indexing on a specialised fast path. That beats both C-level alternatives here. The min(ids) check also costs an extra pass. Both decode methods already cache the lookup.
-> Next, profile where decode_ir actually goes before touching decode again. Look at the join itself and at the benchmark's call pattern in lineage_bench.py rather than the indexing loop.
+> I read minbpe/regex.py, minbpe/base.py, minbpe/basic.py and lineage_bench.py, looking for a change to decode_ir. I searched for the decode path, _decode_cache, the vocab equality check and module-level imports and compiles.
+> I made no edits and ran no evaluations. There is no candidate. I stopped because I found no change I expect to reach the 1% minimum. Regex is already imported lazily. Load results are already cached. So decode pays very little fixed library cost. Cache hits happen in 11 of the 12 bench rounds. On each hit a vocab equality check runs over about 769 entries.
+> I now believe the fixed costs in decode are already mostly removed. What remains per round is small, and the equality check on cache hits is the only part I found that clearly repeats.
+> Next I would measure that equality check directly before changing it. One option is to key the cache on vocab identity or a stored hash instead of comparing all entries. If the measured share is under 1%, I should leave decode alone and look elsewhere.
 >
-> 2026-10-13, episode `9521aec62408` (no candidate)
+> 2026-10-13, episode `85b09090563f` (no candidate)
 
-> I changed RegexTokenizer.train in minbpe/regex.py. After a merge, heap entries are now pushed only when a pair's count increases, not when it decreases. A stale entry whose key overstates the count is re-pushed with the current count when it reaches the top or is popped during tie collection. Pending tied pairs whose count dropped are re-pushed before the top is chosen.
-> Evaluation 1 gave train_regex_ir 373901022 to 370721613, ratio 0.9915, rejected against the required 0.9900. Evaluation 3 was also rejected, at 0.9917. Evaluation 5 was accepted at ratio 0.9791, 373901016 to 366077621, over 51 changed lines. Outputs were identical in all three. Other metrics rose slightly, with encode_ir at 1.0052 the largest.
-> Heap push traffic is a real cost in train, but small. The first two versions did not clear the bar.
-> Next, I will look at the per-merge count update loop itself, and check why encode_ir moved when encode was not touched. The submitted candidate is waiting on replays.
+> I read lineage_bench.py, minbpe/regex.py, minbpe/basic.py, minbpe/base.py and minbpe/__init__.py, looking for remaining cost in decode_ir. I searched for decode, _lookup, _build_vocab and the special token and vocab code. I made no edits and ran no sandbox evaluations.
+> Repeated decodes of the same lists already hit per-instance result caches. The first-call path is a list-comprehension lookup, a bytes join and a utf-8 decode. In earlier sessions, map, itemgetter and min-guard variants of it all measured slower. I stopped without submitting a candidate.
+> I now believe the first-call path in decode is at its fast path in pure Python. The one library cost left is the exact vocab-equality check on cache hits. I estimated it at about 1.5% but did not measure it.
+> Next time, measure that vocab-equality check before touching it. If it is real, try a cheaper identity or version check that still stays correct when the vocab is mutated. If it is not real, leave decode alone.
 >
-> 2026-10-13, episode `4bfab1e3620c` (accepted)
+> 2026-10-13, episode `3edfefb31c82` (no candidate)
 
-> I worked in minbpe/basic.py on BasicTokenizer.train. My first small edit, 7 guarded lines, was rejected. train_basic_ir went from 282431866 to 281768155, ratio 0.9977 against a required 0.9900. Outputs were identical, but that ratio did not clear the bar.
-> The second candidate, 46 lines, stops pushing new heap entries for existing pairs whose count dropped after a merge. Those counts only decrease. Pairs that gain count contain the new id and are pushed fresh. So an older entry's key is always at least the true count, and stale entries are handled when they reach the top. In my sandbox, train_basic_ir went from 282431872 to 275501085, ratio 0.9755, and the outcome was accepted. train_regex_ir rose to ratio 1.0027, encode_ir was 0.9975, and outputs were identical. It is submitted and queued for replay.
-> I now think heap churn in train is where the cost is, and the small edits around it barely matter.
-> Next I want to look at why train_regex_ir rose slightly, and check whether the same lazy-update idea applies to the regex tokenizer.
+> I tried to take the per-element idx >= 0 branch out of the decode list comprehension. I added one min(ids) >= 0 guard in front of it, in minbpe/regex.py for RegexTokenizer and in minbpe/basic.py for BasicTokenizer. Outputs stayed identical.
+> The sandbox evaluation rejected it. decode_ir went from 522002857 to 537089520, ratio 1.0289 against a required 0.9900. The other metrics also rose slightly: train_basic_ir ratio 1.0031, encode_ir 1.0016, save_load_ir 1.0019, train_regex_ir 1.0007. The change did not help. I reverted both edits and did not submit a candidate.
+> min() does a generic rich comparison for every element. That costs more than the specialised int compare inside the comprehension. An extra full pass over ids to remove a cheap branch is a net loss here.
+> Next, look at the bytes join and the vocab lookup in decode instead of the bounds check. Also check whether _BUILD_VOCAB_PREFIX_CACHE in base.py affects what decode pays.
 >
-> 2026-10-13, episode `b3937b3a884f` (accepted)
+> 2026-10-13, episode `3fefd274e9c3` (no candidate)
 
-> I tried two changes to RegexTokenizer.train in minbpe/regex.py. First, I replaced collections.Counter with the plain-dict _count helper and replaced defaultdict with a dict subclass. Second, I reworked how the training loop counts neighbour weights, counting them per character.
-> The first change measured train_regex_ir at 394553669 against a parent of 389391126, ratio 1.0133. It was rejected. The second measured 390849091, ratio 1.0037, and was also rejected. Outputs were identical both times. decode_ir moved to 0.9979 on the second run, but that was not the target. Neither change helped. I did not submit a candidate.
-> Swapping Counter for a hand-written helper does not pay off here. collections is already loaded by the time train runs, and Python-level __missing__ calls add cost rather than remove it. Restructuring the neighbour counting did not beat the existing loop either.
-> Next, I would profile train to find where the instructions actually go before editing it again. I would also look at the merge step rather than the counting step.
+> I changed replace_control_characters in minbpe/base.py. The old version used str.translate with a dict-subclass mapping. That mapping falls into CPython's per-character lookup when a decoded token holds non-ASCII text, such as U+FFFD from partial UTF-8. The new version returns early when s.isprintable() is true. I also edited the save path near lines 332-333.
+> The first three attempts were rejected. Their save_load_ir ratios were 0.9940, 0.9922 and 0.9916, and the required ratio is 0.9900. The fourth attempt was accepted in my sandbox at 0.9438, from 467295534 down to 441045577, with identical outputs. encode_ir rose to 1.0033 and decode_ir moved to 0.9980. All guards were within limits. The submitted candidate has 38 changed lines and is waiting on replays.
+> I now think save cost is dominated by escaping token strings, and that most tokens never need escaping. The small early versions did not help enough.
+> Next I want to check whether the encode_ir drift is noise. I also want to look at load parsing in base.py.
 >
-> 2026-10-13, episode `0265b9f81418` (no candidate)
+> 2026-10-13, episode `0524a0be8b69` (accepted)
 
 ## Licence
 
