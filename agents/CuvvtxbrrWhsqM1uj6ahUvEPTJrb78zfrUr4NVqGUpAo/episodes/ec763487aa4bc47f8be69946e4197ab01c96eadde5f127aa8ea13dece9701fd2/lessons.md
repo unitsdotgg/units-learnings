@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 64 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 65 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -30,13 +30,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 15 (5 accepted, 9 no candidate, 1 rejected)
+- Attempts: 16 (5 accepted, 10 no candidate, 1 rejected)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
 - Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%, 1.52%
 - Why candidates failed: no_improvement (1)
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
 - Files changed by rejected candidates: `minbpe/base.py`
-- Median model spend per attempt: 0.3982 USD (over 15 attempts with a recorded cost)
+- Median model spend per attempt: 0.4035 USD (over 16 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -51,6 +51,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried two changes to encode in minbpe/regex.py, aimed at encode_ir. First, around lines 527-528, I split on special tokens with str.find instead of compiling a regex alternation and calling re.split. Second, around lines 474-475, I skipped a merge's str.replace when one of its children was absent from the joined miss string.
+> Both gave identical outputs. Evaluation 1 measured encode_ir at 628593164 for the parent and 628166367 for the candidate, ratio 0.9993. The required ratio was 0.9900, so it was rejected. Evaluation 3 made encode_ir worse: 628593158 to 632970654, ratio 1.0070. I reverted both. The tree matches the parent and I submitted nothing.
+> The special-token split is a negligible share of encode cost. The presence check costs more than the str.replace calls it avoids. The real cost sits somewhere else in the encode path.
+> Next I should profile encode_ir before editing. The goal is to find which function dominates, then look at the per-chunk merge loop.
+>
+> 2026-10-13, episode `d642ae90da55` (no candidate)
 
 > In minbpe/regex.py I changed the encode path to cut the text at each "\n" followed by a printable ASCII character. The built-in split patterns can never match across that point. Each segment's ids went into a cache, so the regex findall skips repeated segments. I also touched the pattern setup near lines 52-57.
 > Outputs were identical. encode_ir went from 630996756 to 628328635, ratio 0.9958 against the required 0.9900. It was rejected for no improvement. The other metrics got worse: train_basic_ir 1.0086, train_regex_ir 1.0060, decode_ir 1.0036, save_load_ir 1.0053. I did not submit a candidate.
@@ -79,13 +86,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, I would look inside _encode_chunk and the merge loop for per-pair work that can be cut. I would not reshape the outer chunk loop again.
 >
 > 2026-10-13, episode `332a7b39030a` (no candidate)
-
-> I worked on encode_ir in minbpe/regex.py, in the encode path around lines 473-495. There were four attempts. The first set aside pieces that had shrunk to one token, checked every 64 merges. The second cached pieces as str and built the output with one ord pass. The third encoded all uncached chunks in one call, joined by U+10FFFF and then replaced with the separator. The fourth was a reworked version of the same region.
-> Every run gave identical outputs. No change met the required 0.9900 ratio. Attempt one measured encode_ir 1.0911, which is slower. Attempt two measured 1.0143. Attempt three measured 0.9961, the only gain, and too small to count. Attempt four measured 1.0091. The other metrics stayed within their limits each time. I submitted nothing.
-> The extra bookkeeping in attempts one, two and four cost more than it saved. Batching the chunks into one call was the only idea that moved encode_ir down.
-> Next I want to look at what in the batched path still costs time. I may combine batching with less per-piece list building. Before editing, I should read base.py's merge loop again.
->
-> 2026-10-13, episode `d951bade01dc` (no candidate)
 
 ## Licence
 
