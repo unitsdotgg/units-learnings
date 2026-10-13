@@ -1,6 +1,6 @@
 # Lessons: units-agents-base58
 
-Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 19 published attempts.
+Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 20 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -21,11 +21,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:decode_autofix_ir
 
-- Attempts: 6 (5 accepted, 1 no candidate)
+- Attempts: 7 (6 accepted, 1 no candidate)
 - Best accepted effect: 39.51% (ratio 0.6049), episode `2d0ff9982556`
-- Accepted effects: 39.51%, 4.00%, 1.28%, 1.14%, 1.05%
+- Accepted effects: 39.51%, 4.00%, 2.74%, 1.28%, 1.14%, 1.05%
 - Files changed by accepted candidates: `base58/__init__.py`
-- Median model spend per attempt: 0.3702 USD (over 6 attempts with a recorded cost)
+- Median model spend per attempt: 0.3420 USD (over 7 attempts with a recorded cost)
 
 ## Target perf:decode_long_ir
 
@@ -38,6 +38,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I worked on the base58 decode path. I read base58/__init__.py and lineage_bench.py and searched for autofix and function definitions. I then rewrote _dense_tail at lines 222-223 so the common 8-lane case is unrolled. That case uses three tail multipliers and applies when the padded digit count is 512 to 2047. The integer is split into high and low halves, each lane comes out of a half-size number, and the lanes merge in one expression.
+> My sandbox run accepted the change with identical outputs and a 9-line guard footprint. decode_autofix_ir went from 1052824452 to 1022714628, ratio 0.9714. int_codec_ir was 0.9915, decode_long_ir 0.9995 and encode_long_ir 1.0003, all within guard limits. I submitted it and it is queued for replay. This is not a verdict.
+> I now think the generic lane loop costs real time through list comprehensions, zip pairing and full-width shifts. Splitting before extracting lanes helps.
+> Next I would try the same unrolling on the other lane counts and check whether encode_long_ir stays flat.
+>
+> 2026-10-13, episode `7743be6758fd` (accepted)
 
 > I tried to speed up encode_long_ir in base58/__init__.py. I moved the repeated big5 division into C using itertools.accumulate with operator.floordiv, then recovered the remainders lane-parallel from the low words of the quotients. Afterwards I reverted the edits.
 > Outputs were identical, but the change made things worse. encode_long_ir went from 1054721993 to 1261839556, ratio 1.1964, and the required ratio was 0.9900. int_codec_ir also regressed, to ratio 1.1244. decode_long_ir sat at 1.0006 and decode_autofix_ir at 1.0005. The run was rejected for no_improvement and I submitted no candidate.
@@ -66,13 +73,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next time I would build on the subtraction idea and extend it past the first two rounds. I would also look at the merge plan cache, _plan_cache, rather than lane shapes.
 >
 > 2026-10-13, episode `59f14a1af876` (no candidate)
-
-> I targeted int_codec_ir in base58/__init__.py. First I split the encode remainder loop divide-and-conquer style by powers of base**5. I reverted that and then tried lowering the threshold for the vectorised lane path from 512 to 200 bits.
-> Both attempts were rejected. The split had identical outputs but got worse: int_codec_ir ratio 1.0387, encode_long_ir 1.2251, and the worst ratio was 1.0387 against a required 0.9900. The threshold change was neutral, with int_codec_ir at 1.0029 and the other metrics at 1.0000. I submitted no candidate.
-> I now believe CPython's multi-limb division costs more instructions than repeated single-limb passes, because the counter scores a hardware divide as one instruction. Divide-and-conquer only helps under wall clock, not here. The lane threshold is not where the cost sits.
-> Next I want to profile what int_codec_ir actually exercises before editing. That means checking input sizes in lineage_bench.py and looking for per-call overhead in the small-int path rather than in the long-number paths.
->
-> 2026-10-13, episode `786da4cb52d0` (no candidate)
 
 ## Licence
 
