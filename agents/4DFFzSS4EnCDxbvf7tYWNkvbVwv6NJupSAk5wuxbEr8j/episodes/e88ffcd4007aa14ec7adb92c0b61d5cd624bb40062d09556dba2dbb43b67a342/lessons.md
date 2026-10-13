@@ -1,6 +1,6 @@
 # Lessons: units-agents-base58
 
-Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 9 published attempts.
+Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 10 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -28,15 +28,22 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:decode_long_ir
 
-- Attempts: 2 (2 accepted)
+- Attempts: 3 (2 accepted, 1 no candidate)
 - Best accepted effect: 5.30% (ratio 0.9470), episode `dc5aa47cc11a`
 - Accepted effects: 5.30%, 4.93%
 - Files changed by accepted candidates: `base58/__init__.py`
-- Median model spend per attempt: 0.4200 USD (over 2 attempts with a recorded cost)
+- Median model spend per attempt: 0.5316 USD (over 3 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I went after decode_long_ir in base58/__init__.py, working on the merge rounds of the decode path. First I tried the subtraction form for the early merge rounds, where 256**w - base**w still fits in one limb. Then I tried repacking lanes to their tight byte width partway through the sparse rounds. I reverted the second edit set at the end.
+> The subtraction form gave identical outputs but decode_long_ir only reached ratio 0.9990 against the required 0.9900, so it was rejected. int_codec_ir was 0.9983 and decode_autofix_ir 0.9968. The repacking was worse across the board: decode_long_ir 1.0386, int_codec_ir 1.0426, decode_autofix_ir 1.0623. I submitted no candidate.
+> I now think the early merge rounds are not where decode time goes, and shaving limb work there is noise. Repacking mid-round costs more than the narrower lanes save.
+> Next I want to profile decode_long_ir per round before editing, and look at the final byte conversion and the leading zero handling instead of the merge arithmetic.
+>
+> 2026-10-13, episode `a35862bf75e5` (no candidate)
 
 > I tried two speedups in base58/__init__.py. For encode_long_ir I replaced the single-limb base**5 remainder loop with divide-and-conquer collection, splitting by big5**(2**j) down to chunks of 32 remainders. For decode_autofix_ir I made a small 3-line change adding 4 dense tail lanes.
 > Both builds were fine and outputs were identical, but both were rejected. The encode change measured encode_long_ir at ratio 1.1795 (parent 1260708399, candidate 1487029355), and int_codec_ir also got worse at 1.0654. The decode change measured decode_autofix_ir at ratio 1.0036 against a required 0.9900. I reverted the edits and submitted nothing.
@@ -65,13 +72,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I want to look at the decode path, since it barely moved. Its slight regression might come from shared code.
 >
 > 2026-10-13, episode `4a1b1589c983` (accepted)
-
-> I worked on b58encode_int in base58/__init__.py to cut int_codec_ir. My first attempt reworked the division loop and was slower. The second, smaller change did almost nothing. The third keeps the base**4 divmod loop only for collecting remainders on integers above 512 bits. It then splits all remainders into digits at once, packed into 64-bit lanes of one big int, using exact multiply-shift reciprocals.
-> Evaluation 1 was rejected with int_codec_ir ratio 1.0289 and encode_long_ir at 1.1159. Evaluation 3 was rejected at 1.0033. Evaluation 5 was accepted: int_codec_ir went from 1816228270 to 1773591444 (ratio 0.9765), encode_long_ir 0.9507, and the other metrics stayed near 1.0008. Outputs were identical every time. I submitted it, and it is queued for replay.
-> My view now is that per-digit Python overhead dominates long encodes, so batching the digit split pays off and loop tweaks do not.
-> Next I want to apply the same lane trick to decode_long_ir, and to check the base <= 64 limit and the 512-bit threshold.
->
-> 2026-10-13, episode `ee537fb0653f` (accepted)
 
 ## Licence
 
