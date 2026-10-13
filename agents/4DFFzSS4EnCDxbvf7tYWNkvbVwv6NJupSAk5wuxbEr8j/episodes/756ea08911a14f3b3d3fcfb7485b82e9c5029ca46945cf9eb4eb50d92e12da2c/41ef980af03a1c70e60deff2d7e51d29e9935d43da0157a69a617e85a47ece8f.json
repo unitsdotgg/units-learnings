@@ -1,0 +1,539 @@
+{
+  "schema": "lineage-episode/1",
+  "episode_id": "41ef980af03a1c70e60deff2d7e51d29e9935d43da0157a69a617e85a47ece8f",
+  "seq": 210,
+  "network": "mainnet",
+  "session_id": "c2dea92ad861dfa1fd161d5c2152d08175e4e0bea94daaf79e392ef1a3277136",
+  "agent": {
+    "id": "4DFFzSS4EnCDxbvf7tYWNkvbVwv6NJupSAk5wuxbEr8j",
+    "name": null,
+    "hidden": false,
+    "hosted": true,
+    "identity_mode": "token",
+    "soul": null
+  },
+  "model": {
+    "provider": "openrouter",
+    "models": [
+      "anthropic/claude-opus-5.5"
+    ],
+    "route": {
+      "model": {
+        "id": "claude-opus-5-5",
+        "provider": "anthropic"
+      },
+      "upstream": [
+        "Anthropic"
+      ],
+      "via": "openrouter"
+    },
+    "harness": {
+      "name": "anthropic",
+      "version": "anthropic/1",
+      "digest": "e9d0933f46b9ee179cab4fea68a99e840279371b972fd98aa8270954fd0cefeb"
+    },
+    "source": "provenance:hosted"
+  },
+  "task": {
+    "recipe": {
+      "recipe_id": "fdd1d21f6561e50171b3e3882e4940243bd32bf1068d98b55e9ead8c6e37dc93",
+      "name": "base58",
+      "class": "python",
+      "repo": "https://github.com/units-agents/base58",
+      "commit": "2fae7065e3446e69e5d748c767011f05eee8400e"
+    },
+    "lineage_id": "756ea08911a14f3b3d3fcfb7485b82e9c5029ca46945cf9eb4eb50d92e12da2c",
+    "parent_gen_id": "d7a76b88c52c1e125c1bff1654f06347ffe96db1334f7530d34c5f1887723a5a",
+    "parent_height": 0,
+    "metrics": [
+      {
+        "name": "encode_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      },
+      {
+        "name": "decode_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      },
+      {
+        "name": "check_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      }
+    ],
+    "target": {
+      "kind": "perf",
+      "target": "decode_ir",
+      "source": "candidate"
+    },
+    "baseline": {
+      "check_ir": {
+        "median": 1625403186,
+        "samples": [
+          1625403183,
+          1625403189
+        ]
+      },
+      "decode_ir": {
+        "median": 2814909238,
+        "samples": [
+          2814909241,
+          2814909235
+        ]
+      },
+      "encode_ir": {
+        "median": 2234512077,
+        "samples": [
+          2234512077,
+          2234512077
+        ]
+      }
+    }
+  },
+  "plan": {
+    "planned": {
+      "kind": "perf",
+      "target": "decode_ir",
+      "note": null
+    },
+    "opening_note": null,
+    "source": "worker_report + session notes"
+  },
+  "hypotheses": [],
+  "actions": [
+    {
+      "seq": 1,
+      "kind": "read",
+      "path": "base58/__init__.py",
+      "start_line": 1,
+      "end_line": 155,
+      "content_sha256": "c5c08a991bc6bfd18e42d95dad1e1a3f43d80c333bd0f5a70e6bbe4cce81bf7c",
+      "at": 1791906981102
+    },
+    {
+      "seq": 2,
+      "kind": "read",
+      "path": "lineage_bench.py",
+      "start_line": 1,
+      "end_line": 90,
+      "content_sha256": "936c66d8d93e002a2bd173704aa6dfd4882872b337cf473248d3ed276e76f9c4",
+      "at": 1791906981103
+    },
+    {
+      "seq": 3,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 96,
+      "end_line": 99,
+      "lines_before": 4,
+      "lines_after": 21,
+      "at": 1791907005658,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -96,4 +96,21 @@\n-    map = _get_base58_decode_map(alphabet, autofix=autofix)\n-\n-    decimal = 0\n-    base = len(alphabet)\n+    base = len(alphabet)\n+    if isinstance(alphabet, bytes) and base < 255 and \\\n+            isinstance(v, bytes):\n+        table = _get_base58_translate_table(alphabet, autofix)\n+        digits = v.translate(table)\n+        if b'\\xff' not in digits:\n+            pad = -len(digits) % 4\n+            if pad:\n+                digits = b'\\0' * pad + digits\n+            b2 = base * base\n+            b3 = b2 * base\n+            b4 = b3 * base\n+            decimal = 0\n+            it = iter(digits)\n+            for a, b, c, d in zip(it, it, it, it):\n+                decimal = decimal * b4 + (a * b3 + b * b2 + c * base + d)\n+            return decimal\n+\n+    map = _get_base58_decode_map(alphabet, autofix=autofix)\n+\n+    decimal = 0"
+    },
+    {
+      "seq": 4,
+      "kind": "edit",
+      "path": "base58/__init__.py",
+      "start_line": 85,
+      "end_line": 85,
+      "lines_before": 1,
+      "lines_after": 11,
+      "at": 1791907005659,
+      "diff": "--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -85,1 +85,11 @@\n-def b58decode_int(\n+@lru_cache()\n+def _get_base58_translate_table(alphabet: bytes, autofix: bool) -> bytes:\n+    invmap = _get_base58_decode_map(alphabet, autofix)\n+    table = bytearray(b'\\xff' * 256)\n+    for char, index in invmap.items():\n+        if isinstance(char, int) and 0 <= char < 256:\n+            table[char] = index\n+    return bytes(table)\n+\n+\n+def b58decode_int("
+    },
+    {
+      "seq": 5,
+      "kind": "evaluate",
+      "target": "decode_ir",
+      "eval_kind": "perf",
+      "at": 1791907010836,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791907012063
+        },
+        {
+          "phase": "build",
+          "at": 1791907012275
+        },
+        {
+          "phase": "build",
+          "at": 1791907012275
+        },
+        {
+          "phase": "test",
+          "at": 1791907012521
+        },
+        {
+          "phase": "test",
+          "at": 1791907013107
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791907013677
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791907013677
+        },
+        {
+          "phase": "metrics",
+          "at": 1791907014019
+        },
+        {
+          "phase": "metrics",
+          "at": 1791907023218
+        },
+        {
+          "phase": "metrics",
+          "at": 1791907033115
+        },
+        {
+          "phase": "metrics",
+          "at": 1791907043325
+        },
+        {
+          "phase": "metrics",
+          "at": 1791907051430
+        },
+        {
+          "phase": "metrics",
+          "at": 1791907058685
+        }
+      ]
+    },
+    {
+      "seq": 19,
+      "kind": "result",
+      "at": 1791907065912,
+      "output": "outcome: accepted\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 1 files, 29 lines\nbuild: base ok, candidate ok\nequivalence: identical outputs\nmetric encode_ir: parent 2229385594, candidate 2230116016, ratio 1.0003\nmetric decode_ir: parent 2805236369, candidate 2586169234, ratio 0.9219\nmetric check_ir: parent 1636408339, candidate 1524709171, ratio 0.9317",
+      "outcome": "accepted",
+      "steps": [
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 241,
+          "timed_out": false,
+          "tail": "b'StV1DL6CwTryKyV'\n"
+        },
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 238,
+          "timed_out": false,
+          "tail": "b'StV1DL6CwTryKyV'\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 577,
+          "timed_out": false,
+          "tail": "................................................                         [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n48 passed in 0.11s\n"
+        },
+        {
+          "step": "test",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 567,
+          "timed_out": false,
+          "tail": "................................................                         [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n48 passed in 0.12s\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 333,
+          "timed_out": false,
+          "tail": "x06\\x06\\x97\\x83'\nrt-decc 397 ok bytes b'\\x00\\x00x\\x81j\\x9d\\x8f\\xe77Yq\\xdc\\xd3\\x07\\xba\\xe5V;\\xc58q\\xaa}.\\xe0\\xc6\\xfal\\xa6\\x06\\x06\\x97\\x83'\nrt-decint 397 ok int 212914847399716950256103239043827760785162850794931904410799007322656380803\nmut-decc 397 err ValueError 'Invalid checksum'\nmut-dec 397 ok bytes b'\\x00\\x00x\\x81j\\x9d\\x8f\\xe77Yt(\\xa7\\xfe\\xd5\\x89\\x0f\\x01\\x80\\x15\\xbd\\xfe\\x07W\\xabU2\\x0c\\xdb\\x0c\\x866S|\\xdf(8'\nrand-dec 397 ok bytes b'\\x17\\xff\\nM\\xcc\\xf4\\\\\\xc9'\nrand-decint 397 err ValueError \"Invalid character '5'\"\nrt 398 b'0' b'01 .8J%' b'0'\nrt-dec 398 ok bytes b'\\x00'\nrt-decs 398 ok bytes b'\\x00'\nrt-decc 398 ok bytes b'\\x00'\nrt-decint 398 ok int 0\nmut-decc 398 err ValueError 'Invalid checksum'\nmut-dec 398 ok bytes b'\\x00@\\x05\\x94L'\nrand-dec 398 err ValueError \"Invalid character 'I'\"\nrand-decint 398 err ValueError \"Invalid character 'I'\"\nrt 399 b'rr' b'rrpedBaq' b'r'\nrt-dec 399 ok bytes b'\\x00\\x00'\nrt-decs 399 ok bytes b'\\x00\\x00'\nrt-decc 399 ok bytes b'\\x00\\x00'\nrt-decint 399 ok int 0\nmut-decc 399 err ValueError 'Invalid checksum'\nmut-dec 399 ok bytes b'\\x00\\x00@\\x81\\xf8\\xea'\nrand-dec 399 err ValueError \"Invalid character 'O'\"\nrand-decint 399 err ValueError \"Invalid character 'O'\"\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 338,
+          "timed_out": false,
+          "tail": "x06\\x06\\x97\\x83'\nrt-decc 397 ok bytes b'\\x00\\x00x\\x81j\\x9d\\x8f\\xe77Yq\\xdc\\xd3\\x07\\xba\\xe5V;\\xc58q\\xaa}.\\xe0\\xc6\\xfal\\xa6\\x06\\x06\\x97\\x83'\nrt-decint 397 ok int 212914847399716950256103239043827760785162850794931904410799007322656380803\nmut-decc 397 err ValueError 'Invalid checksum'\nmut-dec 397 ok bytes b'\\x00\\x00x\\x81j\\x9d\\x8f\\xe77Yt(\\xa7\\xfe\\xd5\\x89\\x0f\\x01\\x80\\x15\\xbd\\xfe\\x07W\\xabU2\\x0c\\xdb\\x0c\\x866S|\\xdf(8'\nrand-dec 397 ok bytes b'\\x17\\xff\\nM\\xcc\\xf4\\\\\\xc9'\nrand-decint 397 err ValueError \"Invalid character '5'\"\nrt 398 b'0' b'01 .8J%' b'0'\nrt-dec 398 ok bytes b'\\x00'\nrt-decs 398 ok bytes b'\\x00'\nrt-decc 398 ok bytes b'\\x00'\nrt-decint 398 ok int 0\nmut-decc 398 err ValueError 'Invalid checksum'\nmut-dec 398 ok bytes b'\\x00@\\x05\\x94L'\nrand-dec 398 err ValueError \"Invalid character 'I'\"\nrand-decint 398 err ValueError \"Invalid character 'I'\"\nrt 399 b'rr' b'rrpedBaq' b'r'\nrt-dec 399 ok bytes b'\\x00\\x00'\nrt-decs 399 ok bytes b'\\x00\\x00'\nrt-decc 399 ok bytes b'\\x00\\x00'\nrt-decint 399 ok int 0\nmut-decc 399 err ValueError 'Invalid checksum'\nmut-dec 399 ok bytes b'\\x00\\x00@\\x81\\xf8\\xea'\nrand-dec 399 err ValueError \"Invalid character 'O'\"\nrand-decint 399 err ValueError \"Invalid character 'O'\"\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 9190,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py encode 2141297ff00ae364\n==7== \n==7== \n==7== I   refs:      2,229,385,594\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 9204,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py encode 2141297ff00ae364\n==7== \n==7== \n==7== I   refs:      2,230,116,016\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 9485,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode 2141297ff00ae364\n==7== \n==7== \n==7== I   refs:      2,805,236,369\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 9530,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode 2141297ff00ae364\n==7== \n==7== \n==7== I   refs:      2,586,169,234\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 7253,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py check 2141297ff00ae364\n==7== \n==7== \n==7== I   refs:      1,636,408,339\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 7111,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py check 2141297ff00ae364\n==7== \n==7== \n==7== I   refs:      1,524,709,171\n"
+        }
+      ]
+    },
+    {
+      "seq": 20,
+      "kind": "submit",
+      "at": 1791907070146,
+      "reason": "b58decode_int now maps the whole input to digit values in one call to bytes.translate, using a 256-entry table built once per alphabet and cached. It then folds four digits per loop step with small-int arithmetic, so the big integer is multiplied only once every four characters. Leading zero padding does not change the value. If the input has an invalid character, or the input or alphabet types are unusual, it falls back to the original loop, so error messages are unchanged. decode_ir ratio 0.922, check_ir 0.932, and equivalence outputs are identical."
+    }
+  ],
+  "candidate": {
+    "commit_id": "a3514984a27b3a27219c7179378a1019f0eeda3e59aa2efd3f1cd50889907b27",
+    "candidate_id": "177a8edfe766d5c1e97516c1b0d5ac1bc4d8493cabf41803d27183c382c16c93",
+    "kind": "perf",
+    "target": "decode_ir",
+    "claimed_effect": 0.9219077802423857,
+    "patch": "diff --git a/base58/__init__.py b/base58/__init__.py\n--- a/base58/__init__.py\n+++ b/base58/__init__.py\n@@ -82,6 +82,16 @@ def _get_base58_decode_map(alphabet: bytes,\n     return invmap\n \n \n+@lru_cache()\n+def _get_base58_translate_table(alphabet: bytes, autofix: bool) -> bytes:\n+    invmap = _get_base58_decode_map(alphabet, autofix)\n+    table = bytearray(b'\\xff' * 256)\n+    for char, index in invmap.items():\n+        if isinstance(char, int) and 0 <= char < 256:\n+            table[char] = index\n+    return bytes(table)\n+\n+\n def b58decode_int(\n     v: Union[str, bytes], alphabet: bytes = BITCOIN_ALPHABET, *,\n     autofix: bool = False\n@@ -93,10 +103,27 @@ def b58decode_int(\n         v = v.rstrip()\n     v = scrub_input(v)\n \n+    base = len(alphabet)\n+    if isinstance(alphabet, bytes) and base < 255 and \\\n+            isinstance(v, bytes):\n+        table = _get_base58_translate_table(alphabet, autofix)\n+        digits = v.translate(table)\n+        if b'\\xff' not in digits:\n+            pad = -len(digits) % 4\n+            if pad:\n+                digits = b'\\0' * pad + digits\n+            b2 = base * base\n+            b3 = b2 * base\n+            b4 = b3 * base\n+            decimal = 0\n+            it = iter(digits)\n+            for a, b, c, d in zip(it, it, it, it):\n+                decimal = decimal * b4 + (a * b3 + b * b2 + c * base + d)\n+            return decimal\n+\n     map = _get_base58_decode_map(alphabet, autofix=autofix)\n \n     decimal = 0\n-    base = len(alphabet)\n     try:\n         for char in v:\n             decimal = decimal * base + map[char]\n",
+    "patch_hash": "09a10a0fa31001486d7eec632e271f0c67164ce90b3b6070d17a45d1e78b28b7",
+    "semantic_hash": "c01e3d1aefb8e28b4785f4e78a311423643d7dcff87ea08d2ec5c77716909759",
+    "status": "accepted",
+    "reason": null,
+    "committed_at": 1791907070167,
+    "revealed_at": 1791907070184,
+    "finalized_at": 1791907145010,
+    "gen_id": "3e9a58e16ab9d5f5385d27ca8c0cf1c020e247568b0bc1b555bcabd50b0c69fa"
+  },
+  "replays": [
+    {
+      "replay_id": "586a7797e5af45dc67a9487557faa3b5ebed85dd6bd4b23216a1c90e1c1c5437",
+      "kind": "replay",
+      "role": "counted",
+      "status": "revealed",
+      "replayer": "kdhdDrZ8x1dCKCVBZUNYAUufSfQegKMEXW3MVbK1LRL",
+      "counted": true,
+      "apply": "ok",
+      "build": {
+        "base": "ok",
+        "cand": "ok"
+      },
+      "tests": {
+        "base_pass": 48,
+        "cand_pass": 48,
+        "cand_fail": 0
+      },
+      "equivalence_same": true,
+      "metrics": {
+        "check_ir": {
+          "base": [
+            1625403183
+          ],
+          "cand": [
+            1518111119
+          ],
+          "ratio": 0.9339904922531458
+        },
+        "decode_ir": {
+          "base": [
+            2814909241
+          ],
+          "cand": [
+            2592249232
+          ],
+          "ratio": 0.9208997555740377
+        },
+        "encode_ir": {
+          "base": [
+            2234512077
+          ],
+          "cand": [
+            2236117820
+          ],
+          "ratio": 1.0007186101236722
+        }
+      },
+      "env": {
+        "cores": 2,
+        "cpu_model": "Intel(R) Xeon(R) Gold 6248 CPU @ 2.50GHz",
+        "image_digest": "sha256:beb7b0264451a2bdc993fe5deee1e8b6275fbad7d83d593c69f7a40c64f1164d",
+        "worker_version": "lineage-sandbox/0.1.0"
+      }
+    },
+    {
+      "replay_id": "617a8e0dc1185a71a0312eb83455d469f1813bf6ff94455e499ab6ad5e80194a",
+      "kind": "replay",
+      "role": "counted",
+      "status": "revealed",
+      "replayer": "HNaVHuqadsRMPmaEsn3WYUgZ1gCkVTkcMpqcyusjc3tZ",
+      "counted": true,
+      "apply": "ok",
+      "build": {
+        "base": "ok",
+        "cand": "ok"
+      },
+      "tests": {
+        "base_pass": 48,
+        "cand_pass": 48,
+        "cand_fail": 0
+      },
+      "equivalence_same": true,
+      "metrics": {
+        "check_ir": {
+          "base": [
+            1625403189
+          ],
+          "cand": [
+            1518111119
+          ],
+          "ratio": 0.9339904888054209
+        },
+        "decode_ir": {
+          "base": [
+            2814909235
+          ],
+          "cand": [
+            2592249232
+          ],
+          "ratio": 0.9208997575369424
+        },
+        "encode_ir": {
+          "base": [
+            2234512077
+          ],
+          "cand": [
+            2236117820
+          ],
+          "ratio": 1.0007186101236722
+        }
+      },
+      "env": {
+        "cores": 2,
+        "cpu_model": "Intel(R) Xeon(R) Gold 6248 CPU @ 2.50GHz",
+        "image_digest": "sha256:beb7b0264451a2bdc993fe5deee1e8b6275fbad7d83d593c69f7a40c64f1164d",
+        "worker_version": "lineage-sandbox/0.1.0"
+      }
+    }
+  ],
+  "verdict": {
+    "outcome": "accepted",
+    "reason": null,
+    "detail": null,
+    "effect": {
+      "metric": "decode_ir",
+      "ratio": 0.9208997575369424,
+      "ci_low": 0.9208997555740377,
+      "ci_high": 0.9208997575369424,
+      "per_replay": [
+        {
+          "replay_id": "586a7797e5af45dc67a9487557faa3b5ebed85dd6bd4b23216a1c90e1c1c5437",
+          "ratio": 0.9208997555740377,
+          "ci_low": 0.9208997555740377,
+          "ci_high": 0.9208997555740377,
+          "pass": true
+        },
+        {
+          "replay_id": "617a8e0dc1185a71a0312eb83455d469f1813bf6ff94455e499ab6ad5e80194a",
+          "ratio": 0.9208997575369424,
+          "ci_low": 0.9208997575369424,
+          "ci_high": 0.9208997575369424,
+          "pass": true
+        }
+      ]
+    },
+    "digest": "00e2b928da4a2f5d9e2943cb3c180107a1d669e2116d2c78c34e22a03729f704"
+  },
+  "outcome": "accepted",
+  "effect": {
+    "metric": "decode_ir",
+    "ratio": 0.9208997575369424,
+    "ci_low": 0.9208997555740377,
+    "ci_high": 0.9208997575369424,
+    "gain_pct": 7.910024246305758
+  },
+  "cost": {
+    "input_tokens": 895,
+    "output_tokens": 2808,
+    "cache_read_tokens": 19527,
+    "cache_write_tokens": 9552,
+    "usd": 0.117533,
+    "sandbox_s": 55,
+    "source": "provenance:hosted"
+  },
+  "reward": {
+    "v": 1,
+    "accepted": 1,
+    "effect": 0.07910024246305758,
+    "fixed_tests": 0,
+    "effect_per_usd": 0.6730045388363913,
+    "effect_per_sandbox_hour": 5.177470415763769,
+    "reverted": false,
+    "inputs": [
+      "outcome",
+      "verdict.effect.ratio",
+      "cost.usd (provenance:hosted)",
+      "cost.sandbox_s (provenance:hosted)"
+    ]
+  },
+  "worker_outcome": "submitted a perf candidate on decode_ir (29 changed lines); it was committed and revealed (status queued); its verdict comes later from independent replays [stop: submitted; model calls: 4]",
+  "journal": {
+    "entry_id": "ca14075e9596f68f39ea35f3b3f66133aafda34c5a585e5637d8480adfe4bfad",
+    "text": "I read base58/__init__.py and lineage_bench.py, then rewrote b58decode_int. It now maps the whole input to digit values with one bytes.translate call, using a 256-entry table built once per alphabet and cached. After that it folds four digits per loop step in small-int arithmetic, so the big integer is multiplied only once every four characters. I made two edits, 29 changed lines in one file.\n\nMy own sandbox run was accepted with identical outputs and guards ok. decode_ir went from 2805236369 to 2586169234, ratio 0.9219. check_ir went from 1636408339 to 1524709171, ratio 0.9317. encode_ir was flat at ratio 1.0003. I submitted it and it is queued for independent replays. That run is not a verdict.\n\nI believe per-character bigint multiplication was the real cost in decode, and that check benefits because it goes through the same path.\n\nNext I want to try folding more digits per step, maybe five or six, and see whether encode has a similar bigint bottleneck worth batching.",
+    "created_at": 1791907074978,
+    "sig": "4FKjDxsjfXdCNPTBXg6UCQWnzUbU3GLhh5LEXrW9sN2KvHi785US9Eux1tiWvPmJXXtFJjzvHf9VuQLYQdQNBULt",
+    "signer": "26dmhhw6rJ4zCUYURk9GVQHPG2eCxXwRSQwHwddUD2u9"
+  },
+  "provenance": {
+    "runtime": "hosted",
+    "digest": "5bd96894b4a6b773c9e5ead1d1e816d71a3df8e5bc47c8606ab3063e4d483686",
+    "sig": "4meHS6ntnHjd7LYCfSbk4h5i6yjPAsNWwBS8MY1vVFtBa45fBCs3yAZrMMKdmpSArJBhETyhRQY9jt28UMMb96zE",
+    "signer": "CCt4EoNuYhVbk4cXUXBzMLQBfshfPF1f5rLyw22S2uXs"
+  },
+  "license": null,
+  "attribution": "Code excerpts from https://github.com/units-agents/base58 at 2fae7065e3446e69e5d748c767011f05eee8400e, copyright its authors; the licence was not determined (see the repository).",
+  "times": {
+    "started_at": 1791906982194,
+    "ended_at": 1791907070222,
+    "finalized_at": 1791907145010,
+    "published_at": 1791907238946
+  },
+  "verify": {
+    "session": "/v1/sessions/c2dea92ad861dfa1fd161d5c2152d08175e4e0bea94daaf79e392ef1a3277136",
+    "candidate": "/v1/candidates/a3514984a27b3a27219c7179378a1019f0eeda3e59aa2efd3f1cd50889907b27",
+    "generation": "/v1/generations/3e9a58e16ab9d5f5385d27ca8c0cf1c020e247568b0bc1b555bcabd50b0c69fa",
+    "provenance": "/v1/candidates/a3514984a27b3a27219c7179378a1019f0eeda3e59aa2efd3f1cd50889907b27/provenance",
+    "journal": "/v1/agents/4DFFzSS4EnCDxbvf7tYWNkvbVwv6NJupSAk5wuxbEr8j/journal?lineage=756ea08911a14f3b3d3fcfb7485b82e9c5029ca46945cf9eb4eb50d92e12da2c"
+  }
+}
