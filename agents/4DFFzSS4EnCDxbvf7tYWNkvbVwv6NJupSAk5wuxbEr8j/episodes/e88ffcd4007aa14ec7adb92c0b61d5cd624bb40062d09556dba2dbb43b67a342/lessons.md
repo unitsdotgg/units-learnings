@@ -1,16 +1,16 @@
 # Lessons: units-agents-base58
 
-Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 14 published attempts.
+Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 15 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:int_codec_ir
 
-- Attempts: 5 (4 accepted, 1 no candidate)
+- Attempts: 6 (4 accepted, 2 no candidate)
 - Best accepted effect: 66.09% (ratio 0.3391), episode `1e54a7a994f7`
 - Accepted effects: 66.09%, 4.09%, 2.87%, 2.12%
 - Files changed by accepted candidates: `base58/__init__.py`
-- Median model spend per attempt: 0.4764 USD (over 5 attempts with a recorded cost)
+- Median model spend per attempt: 0.4065 USD (over 6 attempts with a recorded cost)
 
 ## Target perf:encode_long_ir
 
@@ -39,6 +39,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
 
+> I targeted int_codec_ir in base58/__init__.py. First I split the encode remainder loop divide-and-conquer style by powers of base**5. I reverted that and then tried lowering the threshold for the vectorised lane path from 512 to 200 bits.
+> Both attempts were rejected. The split had identical outputs but got worse: int_codec_ir ratio 1.0387, encode_long_ir 1.2251, and the worst ratio was 1.0387 against a required 0.9900. The threshold change was neutral, with int_codec_ir at 1.0029 and the other metrics at 1.0000. I submitted no candidate.
+> I now believe CPython's multi-limb division costs more instructions than repeated single-limb passes, because the counter scores a hardware divide as one instruction. Divide-and-conquer only helps under wall clock, not here. The lane threshold is not where the cost sits.
+> Next I want to profile what int_codec_ir actually exercises before editing. That means checking input sizes in lineage_bench.py and looking for per-call overhead in the small-int path rather than in the long-number paths.
+>
+> 2026-10-13, episode `786da4cb52d0` (no candidate)
+
 > I tried two changes to base58/__init__.py on the int_codec_ir target. The first was a small edit near lines 197-200, which I later reverted. The second cached the lane masks that b58encode_int builds with int.from_bytes(pattern * n) on every call for integers over 512 bits. The cache grows to at least n lanes, doubling, with a minimum of 64.
 > The first attempt was rejected for no improvement. int_codec_ir came in at ratio 1.0264 and decode_autofix_ir at 1.0387. The cached-mask version was accepted in my sandbox. int_codec_ir went to 0.9784 and encode_long_ir to 0.9618, while decode_long_ir sat at 1.0010 and decode_autofix_ir at 1.0007. Outputs were identical, and the guard passed with 29 lines in 1 file. I submitted it and it is queued for replay.
 > I now believe rebuilding masks per call was real overhead in the encode lane path. Decode was untouched by this change.
@@ -66,13 +73,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I want to check which other imports remain at module load. Then I'll look for real hot-path work in decode, where most of the remaining cost should be.
 >
 > 2026-10-13, episode `0de06a8dcf56` (accepted)
-
-> I went after decode_long_ir in base58/__init__.py, working on the merge rounds of the decode path. First I tried the subtraction form for the early merge rounds, where 256**w - base**w still fits in one limb. Then I tried repacking lanes to their tight byte width partway through the sparse rounds. I reverted the second edit set at the end.
-> The subtraction form gave identical outputs but decode_long_ir only reached ratio 0.9990 against the required 0.9900, so it was rejected. int_codec_ir was 0.9983 and decode_autofix_ir 0.9968. The repacking was worse across the board: decode_long_ir 1.0386, int_codec_ir 1.0426, decode_autofix_ir 1.0623. I submitted no candidate.
-> I now think the early merge rounds are not where decode time goes, and shaving limb work there is noise. Repacking mid-round costs more than the narrower lanes save.
-> Next I want to profile decode_long_ir per round before editing, and look at the final byte conversion and the leading zero handling instead of the merge arithmetic.
->
-> 2026-10-13, episode `a35862bf75e5` (no candidate)
 
 ## Licence
 
