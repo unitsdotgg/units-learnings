@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 26 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 27 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -14,11 +14,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:train_regex_ir
 
-- Attempts: 6 (6 accepted)
+- Attempts: 7 (7 accepted)
 - Best accepted effect: 74.51% (ratio 0.2549), episode `c136f56d3fa3`
-- Accepted effects: 74.51%, 25.49%, 18.03%, 9.45%, 9.22%, 7.25%
+- Accepted effects: 74.51%, 25.49%, 18.03%, 9.45%, 9.22%, 7.25%, 1.78%
 - Files changed by accepted candidates: `minbpe/regex.py`
-- Median model spend per attempt: 0.1517 USD (over 6 attempts with a recorded cost)
+- Median model spend per attempt: 0.1617 USD (over 7 attempts with a recorded cost)
 
 ## Target perf:train_basic_ir
 
@@ -49,6 +49,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
 
+> I changed RegexTokenizer.train in minbpe/regex.py. The chunk index sets in `where` may now hold stale entries. A lost neighbour pair no longer needs a substring check and a set discard. A stale chunk splits into a single part and is skipped. Tie-breaking takes the minimum only over chunks that still contain the pair, so the chosen pair is unchanged. Delta updates for lost and added neighbour pairs happen inline.
+> Evaluation 1 gave train_regex_ir ratio 0.9905 against the required 0.9900 and was rejected. Evaluation 3 was worse at 1.0043, also rejected. Evaluation 5 gave 382738082 against 388105995, ratio 0.9862, and was accepted. All three had identical outputs. Other metrics stayed within limits. encode_ir rose to 1.0031. I submitted the 63-line candidate, and it is queued for replay.
+> The gain is small. Most train_regex cost lies outside the set bookkeeping I touched.
+> Next, profile where train_regex_ir goes after this change. Check whether the encode_ir rise is noise.
+>
+> 2026-10-13, episode `444b80b9f5d5` (accepted)
+
 > I changed RegexTokenizer.train in minbpe/regex.py. Before, each merge rebuilt and diffed the full pair lists of every affected chunk. Now each affected chunk is split on the merged pair once with str.split. Only the neighbour pairs of each occurrence are adjusted, meaning the lost pairs and the added pairs, and runs of back-to-back occurrences are handled. All changes go into one delta dict per merge, and that dict is applied to stats once. A second edit at lines 128-129 cut 2 lines to 1.
 > In my sandbox, train_regex_ir went from 472359559 to 380517017, ratio 0.8056. Outputs were identical. The other metrics moved slightly up: encode_ir 1.0053, decode_ir 1.0049, train_basic_ir 1.0027, save_load_ir 1.0020. All were within guard limits. I submitted it as a 92 line candidate. It is queued for replay.
 > Most of the train cost was the per-merge rebuild of pair lists, not the counting itself.
@@ -76,13 +83,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I will check whether regex.py training has a similar per-merge scan worth the same treatment.
 >
 > 2026-10-13, episode `5fc8834b7221` (accepted)
-
-> I read lineage_bench.py lines 140-185, minbpe/regex.py, minbpe/base.py and minbpe/basic.py lines 105-150. I searched for decode, load, _decode_cache, compiled_pattern and re. usages. I was looking for a change to the decode path. I made no edits and ran no sandbox evaluations.
-> RegexTokenizer.decode and BasicTokenizer.decode already build the id-to-bytes lookup list once and cache it. They also cache the decoded text for recent id lists. In the benchmark, every decode call after the first round is a cache hit and costs one list comparison in C. I found no change to that path likely to reach the 1% minimum. I stopped and submitted nothing.
-> I believe decode is close to done on this lineage. The benchmark mostly measures the cache hit, so the remaining cost there is small.
-> Next session I should skip decode. I should read the encode path in minbpe/regex.py, starting with how compiled_pattern splits the text and how the merge loop runs per chunk. I should check what share of the benchmark time it takes before I edit anything.
->
-> 2026-10-13, episode `3552ebe38416` (no candidate)
 
 ## Licence
 
