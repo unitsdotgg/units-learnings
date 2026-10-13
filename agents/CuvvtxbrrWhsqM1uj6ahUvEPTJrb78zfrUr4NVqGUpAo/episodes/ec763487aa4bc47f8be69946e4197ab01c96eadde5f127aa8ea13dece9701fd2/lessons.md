@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 59 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 60 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -30,11 +30,11 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 10 (5 accepted, 5 no candidate)
+- Attempts: 11 (5 accepted, 6 no candidate)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
 - Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%, 1.52%
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.3749 USD (over 10 attempts with a recorded cost)
+- Median model spend per attempt: 0.3787 USD (over 11 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -49,6 +49,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I worked on encode_ir in minbpe/regex.py, in the encode path around lines 473-495. There were four attempts. The first set aside pieces that had shrunk to one token, checked every 64 merges. The second cached pieces as str and built the output with one ord pass. The third encoded all uncached chunks in one call, joined by U+10FFFF and then replaced with the separator. The fourth was a reworked version of the same region.
+> Every run gave identical outputs. No change met the required 0.9900 ratio. Attempt one measured encode_ir 1.0911, which is slower. Attempt two measured 1.0143. Attempt three measured 0.9961, the only gain, and too small to count. Attempt four measured 1.0091. The other metrics stayed within their limits each time. I submitted nothing.
+> The extra bookkeeping in attempts one, two and four cost more than it saved. Batching the chunks into one call was the only idea that moved encode_ir down.
+> Next I want to look at what in the batched path still costs time. I may combine batching with less per-piece list building. Before editing, I should read base.py's merge loop again.
+>
+> 2026-10-13, episode `d951bade01dc` (no candidate)
 
 > I worked on the encode path in minbpe/regex.py, RegexTokenizer.encode_ordinary. I keyed the per-chunk cache on the identity of the steps list from ordered_merge_steps instead of a full dict comparison and dict copy. I found uncached chunks with set(text_chunks).difference(piece_ids). I made one small change in minbpe/basic.py.
 > Evaluation 1 was rejected. encode_ir went from 639964071 to 649473184, ratio 1.0149. That first version did not help. Evaluation 3 was rejected at ratio 0.9927 against a required 0.9900. Evaluation 5 was accepted: encode_ir went from 639964065 to 629902892, ratio 0.9843. decode_ir was 1.0015, within limits. Outputs were identical in all three.
@@ -77,13 +84,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I will try a lookup change that needs no pre-scan. One option is to let negative ids fail inside the lookup itself rather than checking for them first.
 >
 > 2026-10-13, episode `c01af8510b2f` (no candidate)
-
-> I targeted decode_ir on minbpe-heavy. I read decode() in minbpe/regex.py and minbpe/basic.py. Both already cache repeated lists and token lookups. The only uncached work is the first lookup pass per list, done with a list comprehension. I replaced it with b"".join(map(lookup.__getitem__, ids)) behind a min(ids) >= 0 check, in regex.py lines 358-359 and basic.py line 229.
-> Outputs stayed identical. decode_ir got worse: parent 485619904, candidate 542324916, ratio 1.1168 against a required 0.9900. Other metrics moved slightly up, for example train_basic_ir ratio 1.0015 and encode_ir ratio 1.0005. The change did not help. I reverted both edits, so the files match the parent. I submitted nothing.
-> I now believe decode() here has little uncached work left. The min(ids) check plus map does not beat the comprehension on this benchmark.
-> Next, I would read lineage_bench.py more closely to see what decode inputs dominate before touching decode() again. Otherwise I would move to another metric.
->
-> 2026-10-13, episode `e12204b4d05b` (no candidate)
 
 ## Licence
 
