@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 68 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 69 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -30,13 +30,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 19 (5 accepted, 12 no candidate, 2 rejected)
+- Attempts: 20 (5 accepted, 13 no candidate, 2 rejected)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
 - Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%, 1.52%
 - Why candidates failed: no_improvement (2)
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
 - Files changed by rejected candidates: `minbpe/base.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.4619 USD (over 19 attempts with a recorded cost)
+- Median model spend per attempt: 0.4354 USD (over 20 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -51,6 +51,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I targeted encode_ir in minbpe/regex.py. In encode_ordinary I replaced the per-chunk extend at lines 476-482 with one join and a single ord pass, 7 lines down to 3. I read minbpe/basic.py, minbpe/base.py and lineage_bench.py first to see what the bench drives.
+> One sandbox evaluation. encode_ir went from 625564431 to 636146931, ratio 1.0169, against a required 0.9900. Rejected for no improvement. Outputs were identical. The other metrics barely moved: train_basic_ir 0.9994, train_regex_ir 0.9998, decode_ir 0.9974, save_load_ir 0.9996. I reverted the edit at lines 476-478, so the tree matches the parent. Nothing was submitted.
+> The join made encode slower. What Python work remains in encode_ordinary is a dict lookup and an extend per chunk, about 30k chunks. That is well under 1% of the metric. Earlier tries on the special-token split, the steps cache check and newline/ASCII pre-splitting also failed to reach the threshold.
+> Next, profile where encode_ir is actually spent before editing again. My guess is the merge loop of _encode_chunk, not chunk handling.
+>
+> 2026-10-13, episode `b47a2784e8aa` (no candidate)
 
 > I changed RegexTokenizer.encode_ordinary in minbpe/regex.py. With the default GPT-4 split pattern it now cuts the text at each "\n" followed by a printable non-space ASCII character. No chunk of that pattern can span such a point, so findall over the pieces matches findall over the whole text. Runs of pieces with only \t-\r and printable ASCII get a pattern written for that case.
 > Evaluation 1 was rejected. Equivalence held, but train_basic_ir worsened +9.43% and decode_ir worsened +4.89%, against a 1% limit. I reworked the edits. Evaluation 3 was accepted with identical outputs. encode_ir went from 628956573 to 617649506, ratio 0.9820. train_basic_ir was 1.0058, train_regex_ir 1.0043, decode_ir 1.0003, save_load_ir 1.0030.
@@ -79,13 +86,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I should profile encode_ir before editing. The goal is to find which function dominates, then look at the per-chunk merge loop.
 >
 > 2026-10-13, episode `d642ae90da55` (no candidate)
-
-> In minbpe/regex.py I changed the encode path to cut the text at each "\n" followed by a printable ASCII character. The built-in split patterns can never match across that point. Each segment's ids went into a cache, so the regex findall skips repeated segments. I also touched the pattern setup near lines 52-57.
-> Outputs were identical. encode_ir went from 630996756 to 628328635, ratio 0.9958 against the required 0.9900. It was rejected for no improvement. The other metrics got worse: train_basic_ir 1.0086, train_regex_ir 1.0060, decode_ir 1.0036, save_load_ir 1.0053. I did not submit a candidate.
-> The segment cache did not help enough. The bench text may have few repeated newline segments, and the cut and lookup cost nearly cancels the saved findall work. The rise in metrics that do not call encode suggests the setup change adds cost elsewhere.
-> Next I would profile where encode_ir spends its time before caching anything. Then I would revert the setup change and check whether the other metrics return to their parent values.
->
-> 2026-10-13, episode `8126731ae13a` (no candidate)
 
 ## Licence
 
