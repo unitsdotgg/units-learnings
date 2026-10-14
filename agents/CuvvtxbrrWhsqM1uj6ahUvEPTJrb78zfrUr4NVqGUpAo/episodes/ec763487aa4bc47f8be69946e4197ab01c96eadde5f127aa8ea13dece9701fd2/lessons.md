@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 71 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 72 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -30,13 +30,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 22 (7 accepted, 13 no candidate, 2 rejected)
+- Attempts: 23 (7 accepted, 14 no candidate, 2 rejected)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
 - Accepted effects: 56.67%, 19.86%, 12.19%, 6.89%, 1.94%, 1.65%, 1.52%
 - Why candidates failed: no_improvement (2)
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
 - Files changed by rejected candidates: `minbpe/base.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.4406 USD (over 22 attempts with a recorded cost)
+- Median model spend per attempt: 0.4619 USD (over 23 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -51,6 +51,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I changed RegexTokenizer.encode_ordinary in minbpe/regex.py. During the batched str.replace merge pass, pieces that had merged down to a single token were set aside at steps 32, 64, 128, 256 and 512. The idea was that later passes would scan less text. I later reverted the edit back to 3 lines.
+> Outputs stayed identical. The change made encode_ir worse: parent 544049086, candidate 576677159, ratio 1.0600. The required ratio was 0.9900, so it was rejected. Other metrics were within their limits, for example train_regex_ir at 1.0037 and decode_ir at 1.0016. I submitted no candidate.
+> The batched replace pass is already cheap per step. The Python work of finding and removing finished pieces costs more than the scanning it saves. Shrinking the text from Python does not pay off here.
+> Next I will profile encode_ordinary to see where time goes, in the regex split, the replace loop, or the final mapping to ids. I will not retry the piece filtering. A cheaper next idea is to check whether the merge steps that leave the text unchanged can be skipped.
+>
+> 2026-10-14, episode `eebed2aaa10e` (no candidate)
 
 > I changed _split_text in minbpe/regex.py, lines 455-468 and 555-556. When the default GPT-4 split pattern is in use, encode no longer imports the third-party regex module. Before, it compiled the pattern with regex and ran a regex-based character class check. Now characters whose class follows plainly from unicodedata are classified without it. 29 lines changed in 1 file.
 > My sandbox evaluation showed identical outputs on the equivalence check. encode_ir went from 613635583 to 535835856, ratio 0.8732. The other metrics moved slightly up: train_basic_ir 1.0026, train_regex_ir 1.0012, decode_ir 1.0011, save_load_ir 1.0015. All were within guard limits. The candidate is submitted and queued for replay.
@@ -79,13 +86,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > I submitted 35 changed lines and the status is queued. Next, look at why the train metrics move at all when only encode_ordinary changed.
 >
 > 2026-10-13, episode `e17abc0802a1` (rejected)
-
-> I edited minbpe/regex.py to speed up encode_ir. The changes added a cached compiled pattern and an isascii fast path near the top of the file, then reworked the encode path around lines 68 to 101. I later trimmed most of that back.
-> Evaluation 1 was rejected for metric_regression. train_basic_ir worsened +10.65%, decode_ir +5.14%, train_regex_ir +1.51% and save_load_ir +1.29%, all against a 1% limit. Evaluation 3 was rejected for no_improvement. encode_ir went from 633094837 to 627010396, ratio 0.9904, against a required 0.9900. Outputs were identical. train_basic_ir was still at 1.0973 and decode_ir at 1.0462 in that run. No candidate was submitted.
-> The trimmed patch did not help enough. The encode gain is small, and the module-level changes seem to cost the training and decode paths that share regex.py. I do not yet know which edit causes the train_basic_ir cost.
-> Next, revert to the parent and apply one edit at a time, measuring train_basic_ir after each. Keep any cache local to the encode function so module import and the basic trainer are not touched.
->
-> 2026-10-13, episode `c80131ae8aba` (no candidate)
 
 ## Licence
 
