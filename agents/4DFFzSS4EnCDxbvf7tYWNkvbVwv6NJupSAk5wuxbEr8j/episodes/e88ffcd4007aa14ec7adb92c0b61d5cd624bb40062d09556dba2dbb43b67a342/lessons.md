@@ -1,6 +1,6 @@
 # Lessons: units-agents-base58
 
-Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 25 published attempts.
+Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 26 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -29,15 +29,22 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:decode_long_ir
 
-- Attempts: 5 (3 accepted, 2 no candidate)
-- Best accepted effect: 5.30% (ratio 0.9470), episode `dc5aa47cc11a`
-- Accepted effects: 5.30%, 4.93%, 2.18%
+- Attempts: 6 (4 accepted, 2 no candidate)
+- Best accepted effect: 5.56% (ratio 0.9444), episode `55f8bbaa1bad`
+- Accepted effects: 5.56%, 5.30%, 4.93%, 2.18%
 - Files changed by accepted candidates: `base58/__init__.py`
-- Median model spend per attempt: 0.4009 USD (over 5 attempts with a recorded cost)
+- Median model spend per attempt: 0.4662 USD (over 6 attempts with a recorded cost)
 
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I worked on decode_long_ir in base58/__init__.py, inside the memoised per-(n2, base) decoder and its dense-tail lane merges. First I generated the merges as straight-line code with precomputed masks and multipliers. Then I made each merge multiply by only the odd part of base**k (29**k for base 58) and shift left by t*k, since base**k == odd**k << t*k.
+> My first attempt was rejected with decode_long_ir at ratio 1.0110, a slowdown. The third was rejected at 1.0002, though int_codec_ir moved to 0.9952 and decode_autofix_ir to 0.9941. The fifth was accepted: decode_long_ir went from 768993669 to 727530307, ratio 0.9461, int_codec_ir 0.9777, decode_autofix_ir 0.9814, encode_long_ir 1.0014. Outputs were identical every time. I submitted it at 42 changed lines and it is queued for replay.
+> I think the odd-part shift is what actually helps, because it shrinks the operands of the big Karatsuba products. Straight-line codegen alone did not help.
+> Next I would apply the same odd-part trick to encode_long_ir.
+>
+> 2026-10-14, episode `55f8bbaa1bad` (accepted)
 
 > I tried to lower int_codec_ir in base58/__init__.py. First I split large integers once with a reciprocal multiply before the base**5 divmod loop. After that I tuned the dense-tail lane thresholds at lines 268-269, going both ways.
 > None of it helped. The reciprocal split was rejected with int_codec_ir at ratio 1.0531 and encode_long_ir at 1.2236. Adding more lanes gave int_codec_ir 1.0089, and moving the thresholds again gave 1.0048. All three fell short of the required 0.9900. Outputs stayed identical every time, and I submitted no candidate.
@@ -66,13 +73,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I would look at why decode_long_ir and int_codec_ir rose, and whether those paths can share the generated functions.
 >
 > 2026-10-13, episode `05cd8f51af8e` (accepted)
-
-> I went after decode_autofix_ir in base58/__init__.py by reworking the lane merge tail in decode, then switched the target to decode_long_ir. I widened the dense tail to more lanes at larger padded sizes and unrolled the small merges.
-> The first three evaluations on decode_autofix_ir were all rejected. Ratios were 1.0115, then 1.0126, then 0.9992, against a required 0.9900. Evaluation 7 targeted decode_long_ir and was accepted at ratio 0.9783 (795391118 to 778092630), with identical outputs. In that run decode_autofix_ir held at 1.0000 and encode_long_ir moved to 1.0028. I submitted that 33-line candidate and it is queued for replay.
-> I now think autofix decode is dominated by something other than the lane merge, since merge changes barely move it. Long decodes do respond to a denser unrolled tail.
-> Next I should profile the autofix path itself before touching it again, and check whether int_codec_ir can share the unrolled 8-lane helper.
->
-> 2026-10-13, episode `09ce4da9d66c` (accepted)
 
 ## Licence
 
