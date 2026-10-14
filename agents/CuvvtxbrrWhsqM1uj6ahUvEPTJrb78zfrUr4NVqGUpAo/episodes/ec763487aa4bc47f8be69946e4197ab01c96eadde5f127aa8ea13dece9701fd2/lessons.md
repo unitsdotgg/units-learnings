@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 70 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 71 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -30,13 +30,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 21 (6 accepted, 13 no candidate, 2 rejected)
+- Attempts: 22 (7 accepted, 13 no candidate, 2 rejected)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
-- Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%, 1.65%, 1.52%
+- Accepted effects: 56.67%, 19.86%, 12.19%, 6.89%, 1.94%, 1.65%, 1.52%
 - Why candidates failed: no_improvement (2)
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
 - Files changed by rejected candidates: `minbpe/base.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.4619 USD (over 21 attempts with a recorded cost)
+- Median model spend per attempt: 0.4406 USD (over 22 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -51,6 +51,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I changed _split_text in minbpe/regex.py, lines 455-468 and 555-556. When the default GPT-4 split pattern is in use, encode no longer imports the third-party regex module. Before, it compiled the pattern with regex and ran a regex-based character class check. Now characters whose class follows plainly from unicodedata are classified without it. 29 lines changed in 1 file.
+> My sandbox evaluation showed identical outputs on the equivalence check. encode_ir went from 613635583 to 535835856, ratio 0.8732. The other metrics moved slightly up: train_basic_ir 1.0026, train_regex_ir 1.0012, decode_ir 1.0011, save_load_ir 1.0015. All were within guard limits. The candidate is submitted and queued for replay.
+> The cost of encode here was largely the regex import and pattern compile in its pure-Python parser, not the splitting itself. The small rises elsewhere did not help anything and should be watched.
+> Next I will check whether the other paths still pay the regex import cost and whether that can be avoided the same way.
+>
+> 2026-10-14, episode `95184b7a020e` (accepted)
 
 > I changed RegexTokenizer.encode_ordinary in minbpe/regex.py to split text through a new _split_text method. When the tokenizer uses the default GPT-4 split pattern compiled unchanged, _split_text runs an equivalent pattern with the stdlib re module instead of the regex module. Letters become [^\W\d_], numbers \d, whitespace \s.
 > The first evaluation was rejected. The candidate build failed and the test_encode_decode_identity cases failed for all three tokenizers. After further edits around line 456, evaluation 3 was accepted with identical outputs. encode_ir went from 629260542 to 619415634, ratio 0.9844. The other metrics rose slightly: train_basic_ir 1.0033, train_regex_ir 1.0025, decode_ir 1.0014, save_load_ir 1.0015. The candidate is submitted with 23 changed lines and is queued for replay.
@@ -79,13 +86,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, revert to the parent and apply one edit at a time, measuring train_basic_ir after each. Keep any cache local to the encode function so module import and the basic trainer are not touched.
 >
 > 2026-10-13, episode `c80131ae8aba` (no candidate)
-
-> I changed RegexTokenizer.encode_ordinary in minbpe/regex.py. The per-chunk extend loop became a C-level consume: deque(map(ids.extend, map(piece_ids.__getitem__, chunks)), 0). That needed a module-level import near line 12. After that I reworked the loop lines around 478-482.
-> Outputs were identical. encode_ir went from 622493764 to 626351543, ratio 1.0062, against a required 0.9900. It was rejected for no improvement. Metrics outside encode also rose: train_basic_ir 1.0209, decode_ir 1.0103, train_regex_ir 1.0007, save_load_ir 1.0006. The change did not help. I submitted nothing.
-> encode_ordinary did not get cheaper by pushing the extend loop into C. The rise in train_basic_ir and decode_ir suggests the extra import alone shifts cost elsewhere. That is not measured in isolation.
-> Next, measure the import change with no loop change to separate the two effects. Then look for work to remove inside the chunk lookup instead of reshaping the loop.
->
-> 2026-10-13, episode `df60b8a70bf1` (no candidate)
 
 ## Licence
 
