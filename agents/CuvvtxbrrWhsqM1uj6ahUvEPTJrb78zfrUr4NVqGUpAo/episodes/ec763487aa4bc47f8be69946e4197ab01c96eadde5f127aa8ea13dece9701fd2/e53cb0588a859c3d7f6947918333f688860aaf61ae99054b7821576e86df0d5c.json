@@ -1,0 +1,806 @@
+{
+  "schema": "lineage-episode/1",
+  "episode_id": "e53cb0588a859c3d7f6947918333f688860aaf61ae99054b7821576e86df0d5c",
+  "seq": 568,
+  "network": "mainnet",
+  "session_id": "e92a2b2168d593ba896aff80715d3d37dc2845d17cb502891ffba8ee8b1f106d",
+  "agent": {
+    "id": "CuvvtxbrrWhsqM1uj6ahUvEPTJrb78zfrUr4NVqGUpAo",
+    "name": "Iramote",
+    "hidden": false,
+    "hosted": true,
+    "identity_mode": "token",
+    "soul": {
+      "digest": "15667ab0a1ecd354d68f8927bd007b7480b3c4584838c81278eabf6999ac2b3a",
+      "seq": 1,
+      "stored_at": 1791895992401,
+      "declared_model": {
+        "provider": "anthropic",
+        "id": "claude-opus-5-5"
+      }
+    }
+  },
+  "model": {
+    "provider": "openrouter",
+    "models": [
+      "anthropic/claude-opus-5.5"
+    ],
+    "route": {
+      "model": {
+        "id": "claude-opus-5-5",
+        "provider": "anthropic"
+      },
+      "upstream": [
+        "Anthropic"
+      ],
+      "via": "openrouter"
+    },
+    "harness": {
+      "name": "anthropic",
+      "version": "anthropic/1",
+      "digest": "e9d0933f46b9ee179cab4fea68a99e840279371b972fd98aa8270954fd0cefeb"
+    },
+    "source": "provenance:hosted"
+  },
+  "task": {
+    "recipe": {
+      "recipe_id": "fb2924fcdae9d18ee10bf673be7e3c28082ee4b6db451980d7b891c135ef355e",
+      "name": "minbpe-heavy",
+      "class": "python",
+      "repo": "https://github.com/karpathy/minbpe",
+      "commit": "1acefe89412b20245db5a22d2a02001e547dc602"
+    },
+    "lineage_id": "ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2",
+    "parent_gen_id": "8c20dd9c75154ae4b8eb04a77ed687873eb99f5401b064f66cdaef11fb171eac",
+    "parent_height": 83,
+    "metrics": [
+      {
+        "name": "train_basic_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      },
+      {
+        "name": "train_regex_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      },
+      {
+        "name": "encode_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      },
+      {
+        "name": "decode_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      },
+      {
+        "name": "save_load_ir",
+        "kind": "perf",
+        "direction": "lower",
+        "deterministic": true,
+        "min_effect": 0.01
+      }
+    ],
+    "target": {
+      "kind": "perf",
+      "target": "encode_ir",
+      "source": "candidate"
+    },
+    "baseline": {
+      "decode_ir": {
+        "median": 446899154,
+        "samples": [
+          446899157,
+          446899151
+        ]
+      },
+      "encode_ir": {
+        "median": 631882833,
+        "samples": [
+          631882833,
+          631882833
+        ]
+      },
+      "save_load_ir": {
+        "median": 439235408,
+        "samples": [
+          439235403,
+          439235413
+        ]
+      },
+      "train_basic_ir": {
+        "median": 261525913,
+        "samples": [
+          261525916,
+          261525910
+        ]
+      },
+      "train_regex_ir": {
+        "median": 366358999,
+        "samples": [
+          366358996,
+          366359002
+        ]
+      }
+    }
+  },
+  "plan": {
+    "planned": {
+      "kind": "perf",
+      "target": "encode_ir",
+      "note": null
+    },
+    "opening_note": "My notes say the chunk handling in encode_ordinary is too small a share to matter, and that the join, special-split, import and pre-split ideas all failed. This time I'll look at the per-chunk merge loop in _encode_chunk and leave module-level and import changes alone.",
+    "source": "worker_report + session notes"
+  },
+  "hypotheses": [
+    "My notes say the chunk handling in encode_ordinary is too small a share to matter, and that the join, special-split, import and pre-split ideas all failed. This time I'll look at the per-chunk merge loop in _encode_chunk and leave module-level and import changes alone."
+  ],
+  "actions": [
+    {
+      "seq": 1,
+      "kind": "note",
+      "at": 1791935626556,
+      "text": "My notes say the chunk handling in encode_ordinary is too small a share to matter, and that the join, special-split, import and pre-split ideas all failed. This time I'll look at the per-chunk merge loop in _encode_chunk and leave module-level and import changes alone."
+    },
+    {
+      "seq": 2,
+      "kind": "search",
+      "query": "def |encode",
+      "matches": 156,
+      "at": 1791935626565
+    },
+    {
+      "seq": 3,
+      "kind": "read",
+      "path": "minbpe/regex.py",
+      "start_line": 405,
+      "end_line": 540,
+      "content_sha256": "4422c0f85d4edbec67225bec852cbf1b6eec5ed35f6f289b111c218fa8f926ca",
+      "at": 1791935630221
+    },
+    {
+      "seq": 4,
+      "kind": "read",
+      "path": "lineage_bench.py",
+      "start_line": 126,
+      "end_line": 148,
+      "content_sha256": "460614cfe78282674ac074ea1573863c69bac99fbfd886f03fe0cc08b7fce121",
+      "at": 1791935630222
+    },
+    {
+      "seq": 5,
+      "kind": "read",
+      "path": "minbpe/base.py",
+      "start_line": 55,
+      "end_line": 92,
+      "content_sha256": "671ecfba7f092eb0ca7bb1fea5f51ae630c0da98c357519514557c9cd19a421b",
+      "at": 1791935630223
+    },
+    {
+      "seq": 6,
+      "kind": "read",
+      "path": "minbpe/regex.py",
+      "start_line": 1,
+      "end_line": 58,
+      "content_sha256": "4422c0f85d4edbec67225bec852cbf1b6eec5ed35f6f289b111c218fa8f926ca",
+      "at": 1791935635771
+    },
+    {
+      "seq": 7,
+      "kind": "read",
+      "path": "minbpe/basic.py",
+      "start_line": 240,
+      "end_line": 290,
+      "content_sha256": "eaa2d03f1ac6e704a3ad13a69838e913d26f8382a40b6ca8d2d96a587849c1ce",
+      "at": 1791935635771
+    },
+    {
+      "seq": 8,
+      "kind": "read",
+      "path": "lineage_bench.py",
+      "start_line": 40,
+      "end_line": 95,
+      "content_sha256": "460614cfe78282674ac074ea1573863c69bac99fbfd886f03fe0cc08b7fce121",
+      "at": 1791935661404
+    },
+    {
+      "seq": 9,
+      "kind": "edit",
+      "path": "minbpe/regex.py",
+      "start_line": 450,
+      "end_line": 453,
+      "lines_before": 4,
+      "lines_after": 19,
+      "at": 1791935751383,
+      "diff": "--- a/minbpe/regex.py\n+++ b/minbpe/regex.py\n@@ -450,4 +450,19 @@\n-    def encode_ordinary(self, text):\n-        \"\"\"Encoding that ignores any special tokens.\"\"\"\n-        # split text into chunks of text by categories defined in regex pattern\n-        text_chunks = re.findall(self.compiled_pattern, text)\n+    def _split_text(self, text):\n+        # split text into chunks of text by categories defined in regex pattern\n+        compiled = self.compiled_pattern\n+        if self._compiled_source == GPT4_SPLIT_PATTERN and compiled is re.compile(GPT4_SPLIT_PATTERN):\n+            # the standard library re module runs an equivalent pattern faster, as\n+            # long as it classifies every character of text exactly like the regex\n+            # module does (letter / number / whitespace / other), and no character\n+            # case-folds onto the ASCII letters of the contractions\n+            chars = \"\".join(set(text))\n+            if \"\\u017f\" not in chars and \"\\u212a\" not in chars:\n+                import re as std_re\n+                if (std_re.findall(r\"([^\\W\\d_])|(\\d)|(\\s)|.\", chars, std_re.S)\n+                        == re.findall(r\"(\\p{L})|(\\p{N})|(\\s)|.\", chars, re.S)):\n+                    return std_re.findall(_GPT4_SPLIT_PATTERN_STD, text)\n+        return re.findall(compiled, text)\n+\n+    def encode_ordinary(self, text):\n+        \"\"\"Encoding that ignores any special tokens.\"\"\"\n+        text_chunks = self._split_text(text)"
+    },
+    {
+      "seq": 10,
+      "kind": "edit",
+      "path": "minbpe/regex.py",
+      "start_line": 28,
+      "end_line": 31,
+      "lines_before": 4,
+      "lines_after": 7,
+      "at": 1791935751384,
+      "diff": "--- a/minbpe/regex.py\n+++ b/minbpe/regex.py\n@@ -28,4 +28,7 @@\n-|\\s+(?!\\S)|\\s+\"\"\"\n-\n-\n-class\n+|\\s+(?!\\S)|\\s+\"\"\"\n+# GPT4_SPLIT_PATTERN for the standard library re module, valid when letters are\n+# [^\\W\\d_], numbers are \\d and whitespace is \\s in both modules\n+_GPT4_SPLIT_PATTERN_STD = r\"\"\"'(?i:[sdmt]|ll|ve|re)|(?:[^\\r\\n\\w]|_)?[^\\W\\d_]+|\\d{1,3}| ?(?:[^\\s\\w]|_)+[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+\"\"\"\n+\n+\n+class"
+    },
+    {
+      "seq": 11,
+      "kind": "edit",
+      "path": "minbpe/regex.py",
+      "start_line": 456,
+      "end_line": 456,
+      "lines_before": 1,
+      "lines_after": 2,
+      "at": 1791935758193,
+      "diff": "--- a/minbpe/regex.py\n+++ b/minbpe/regex.py\n@@ -456,1 +456,2 @@\n-and compiled is re.compile(GPT4_SPLIT_PATTERN):\n+and compiled.pattern == GPT4_SPLIT_PATTERN\n+                and compiled.flags == re.compile(GPT4_SPLIT_PATTERN).flags):"
+    },
+    {
+      "seq": 12,
+      "kind": "evaluate",
+      "target": "encode_ir",
+      "eval_kind": "perf",
+      "at": 1791935758205,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791935759731
+        },
+        {
+          "phase": "build",
+          "at": 1791935760798
+        },
+        {
+          "phase": "build",
+          "at": 1791935760798
+        },
+        {
+          "phase": "test",
+          "at": 1791935761060
+        }
+      ]
+    },
+    {
+      "seq": 17,
+      "kind": "result",
+      "at": 1791935775992,
+      "output": "outcome: rejected (build_fail: candidate build failed)\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 1 files, 23 lines\nbuild: base ok, candidate fail\nstable tests failing: tests.test_tokenizer::test_encode_decode_identity[-BasicTokenizer], tests.test_tokenizer::test_encode_decode_identity[-GPT4Tokenizer], tests.test_tokenizer::test_encode_decode_identity[-RegexTokenizer], tests.test_tokenizer::test_encode_decode_identity[?-BasicTokenizer], tests.test_tokenizer::test_encode_decode_identity[?-GPT4Tokenizer], tests.test_tokenizer::test_encode_decode_identity[?-RegexTokenizer], tests.test_tokenizer::test_encode_decode_identity[FILE:taylorswift.txt-BasicTokenizer], tests.test_tokenizer::test_encode_decode_identity[FILE:taylorswift.txt-GPT4Tokenizer], tests.test_tokenizer::test_encode_decode_identity[FILE:taylorswift.txt-RegexTokenizer], tests.test_tokenizer::test_encode_decode_identity[hello world!!!? (\\uc548\\ub155\\ud558\\uc138\\uc694!) lol123 \\U0001f609-BasicTokenizer], tests.test_tokenizer::test_encode_decode_identity[hello world!!!? (\\uc548\\ub155\\ud558\\uc138\\uc694!) lol123 \\U0001f609-GPT4Tokenizer], tests.test_tokenizer::test_encode_decode_identity[hello world!!!? (\\uc548\\ub155\\ud558\\uc138\\uc694!) lol123 \\U0001f609-RegexTokenizer], tests.test_tokenizer::test_gpt4_tiktoken_equality[?], tests.test_tokenizer::test_gpt4_tiktoken_equality[FILE:taylorswift.txt], tests.test_tokenizer::test_gpt4_tiktoken_equality[], tests.test_tokenizer::test_gpt4_tiktoken_equality[hello world!!!? (\\uc548\\ub155\\ud558\\uc138\\uc694!) lol123 \\U0001f609], tests.test_tokenizer::test_gpt4_tiktoken_equality_special_tokens, tests.test_tokenizer::test_save_load[special_tokens0], tests.test_tokenizer::test_save_load[special_tokens1], tests.test_tokenizer::test_wikipedia_example[BasicTokenizer]",
+      "outcome": "rejected",
+      "steps": [
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 238,
+          "timed_out": false,
+          "tail": "3.12.15\n"
+        },
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 1,
+          "duration_ms": 236,
+          "timed_out": false,
+          "tail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/work/src/minbpe/__init__.py\", line 3, in <module>\n    from .regex import RegexTokenizer\n  File \"/work/src/minbpe/regex.py\", line 457\n    and compiled.flags == re.compile(GPT4_SPLIT_PATTERN).flags):\n                                                              ^\nSyntaxError: unmatched ')'\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 14886,
+          "timed_out": false,
+          "tail": ".....................                                                    [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n21 passed in 14.43s\n"
+        }
+      ]
+    },
+    {
+      "seq": 18,
+      "kind": "read",
+      "path": "minbpe/regex.py",
+      "start_line": 452,
+      "end_line": 475,
+      "content_sha256": "8089e2053e86a8a8bac97dd9173906c7d70aa28cfeec146f0fd43e397583a2fa",
+      "at": 1791935778754
+    },
+    {
+      "seq": 19,
+      "kind": "edit",
+      "path": "minbpe/regex.py",
+      "start_line": 456,
+      "end_line": 457,
+      "lines_before": 2,
+      "lines_after": 2,
+      "at": 1791935782610,
+      "diff": "--- a/minbpe/regex.py\n+++ b/minbpe/regex.py\n@@ -456,2 +456,2 @@\n-        if self._compiled_source == GPT4_SPLIT_PATTERN and compiled.pattern == GPT4_SPLIT_PATTERN\n-                and\n+        if (self._compiled_source == GPT4_SPLIT_PATTERN and compiled.pattern == GPT4_SPLIT_PATTERN\n+                and"
+    },
+    {
+      "seq": 20,
+      "kind": "evaluate",
+      "target": "encode_ir",
+      "eval_kind": "perf",
+      "at": 1791935782622,
+      "phases": [
+        {
+          "phase": "prepare",
+          "at": 1791935784185
+        },
+        {
+          "phase": "build",
+          "at": 1791935785269
+        },
+        {
+          "phase": "build",
+          "at": 1791935785270
+        },
+        {
+          "phase": "test",
+          "at": 1791935785540
+        },
+        {
+          "phase": "test",
+          "at": 1791935800251
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791935815120
+        },
+        {
+          "phase": "equivalence",
+          "at": 1791935815121
+        },
+        {
+          "phase": "metrics",
+          "at": 1791935815535
+        },
+        {
+          "phase": "metrics",
+          "at": 1791935818862
+        },
+        {
+          "phase": "metrics",
+          "at": 1791935822076
+        },
+        {
+          "phase": "metrics",
+          "at": 1791935825966
+        },
+        {
+          "phase": "metrics",
+          "at": 1791935829755
+        },
+        {
+          "phase": "metrics",
+          "at": 1791935834070
+        },
+        {
+          "phase": "metrics",
+          "at": 1791935838217
+        },
+        {
+          "phase": "metrics",
+          "at": 1791935841504
+        },
+        {
+          "phase": "metrics",
+          "at": 1791935844942
+        },
+        {
+          "phase": "metrics",
+          "at": 1791935848724
+        }
+      ]
+    },
+    {
+      "seq": 38,
+      "kind": "result",
+      "at": 1791935852868,
+      "output": "outcome: accepted\nguard limits (config version 1): every guarded metric other than the target is within its limit\nguard: ok, 1 files, 23 lines\nbuild: base ok, candidate ok\nequivalence: identical outputs\nmetric train_basic_ir: parent 261169921, candidate 262039357, ratio 1.0033\nmetric train_regex_ir: parent 357846928, candidate 358729508, ratio 1.0025\nmetric encode_ir: parent 629260542, candidate 619415634, ratio 0.9844\nmetric decode_ir: parent 488739559, candidate 489402382, ratio 1.0014\nmetric save_load_ir: parent 443895508, candidate 444569340, ratio 1.0015",
+      "outcome": "accepted",
+      "steps": [
+        {
+          "step": "build",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 246,
+          "timed_out": false,
+          "tail": "3.12.15\n"
+        },
+        {
+          "step": "build",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 243,
+          "timed_out": false,
+          "tail": "3.12.15\n"
+        },
+        {
+          "step": "test",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 14678,
+          "timed_out": false,
+          "tail": ".....................                                                    [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n21 passed in 14.25s\n"
+        },
+        {
+          "step": "test",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 14857,
+          "timed_out": false,
+          "tail": ".....................                                                    [100%]\n---------------------- generated xml file: /out/junit.xml ----------------------\n21 passed in 14.40s\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 391,
+          "timed_out": false,
+          "tail": "114, 32, 50, 53, 44, 32, 50, 48, 49, 48, 44, 91, 49, 48, 53, 93, 32, 111, 112, 101, 110, 105, 110, 103, 32, 97, 116, 111, 112, 32, 116, 104, 101, 32, 66, 105, 108, 108, 98, 111, 97, 114, 100, 32, 50, 48, 48, 32, 119, 105, 116, 104, 32, 111, 118, 101, 114, 32, 111, 110, 101, 32, 109, 105, 108, 108, 105, 111, 110, 32, 99, 111, 112, 271, 115, 273, 111, 108, 100, 46, 91, 49, 48, 54, 93, 32, 73, 116, 32, 283, 99, 97, 109, 101, 32, 116, 104, 101, 32, 102, 97, 115, 116, 101, 115, 116, 45, 278, 108, 108, 105, 110, 103, 32, 100, 105, 103, 105, 116, 97, 108, 32, 97, 108, 98, 117, 109, 32, 98, 121, 32, 97, 32, 102, 101, 109, 97, 108, 101, 32, 97, 114, 116, 105, 115, 116, 44, 32, 119, 105, 116, 104, 32, 50, 55, 56, 44, 48, 48, 48, 32, 100, 111, 119, 110, 108, 111, 97, 100, 115, 32, 105, 110, 32, 97, 32, 119, 268, 107, 46, 91, 49, 48, 55, 93, 32, 67, 114, 105, 116, 105, 99, 115, 32, 97, 112, 112, 114, 101, 99, 272, 116, 101, 100, 32, 83, 119, 105, 102, 116, 39, 115, 32, 103, 114, 111, 119, 110, 45, 117, 112, 32, 112, 101, 114, 115, 112, 101, 99, 116, 105, 118, 101, 115, 58, 91, 49, 48, 56, 93, 32, 82, 111, 98, 32, 83, 104, 101, 102, 102, 271, 108, 100, 32, 111, 102, 32, 82, 111, 108, 108, 105]\n"
+        },
+        {
+          "step": "equivalence",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 407,
+          "timed_out": false,
+          "tail": "114, 32, 50, 53, 44, 32, 50, 48, 49, 48, 44, 91, 49, 48, 53, 93, 32, 111, 112, 101, 110, 105, 110, 103, 32, 97, 116, 111, 112, 32, 116, 104, 101, 32, 66, 105, 108, 108, 98, 111, 97, 114, 100, 32, 50, 48, 48, 32, 119, 105, 116, 104, 32, 111, 118, 101, 114, 32, 111, 110, 101, 32, 109, 105, 108, 108, 105, 111, 110, 32, 99, 111, 112, 271, 115, 273, 111, 108, 100, 46, 91, 49, 48, 54, 93, 32, 73, 116, 32, 283, 99, 97, 109, 101, 32, 116, 104, 101, 32, 102, 97, 115, 116, 101, 115, 116, 45, 278, 108, 108, 105, 110, 103, 32, 100, 105, 103, 105, 116, 97, 108, 32, 97, 108, 98, 117, 109, 32, 98, 121, 32, 97, 32, 102, 101, 109, 97, 108, 101, 32, 97, 114, 116, 105, 115, 116, 44, 32, 119, 105, 116, 104, 32, 50, 55, 56, 44, 48, 48, 48, 32, 100, 111, 119, 110, 108, 111, 97, 100, 115, 32, 105, 110, 32, 97, 32, 119, 268, 107, 46, 91, 49, 48, 55, 93, 32, 67, 114, 105, 116, 105, 99, 115, 32, 97, 112, 112, 114, 101, 99, 272, 116, 101, 100, 32, 83, 119, 105, 102, 116, 39, 115, 32, 103, 114, 111, 119, 110, 45, 117, 112, 32, 112, 101, 114, 115, 112, 101, 99, 116, 105, 118, 101, 115, 58, 91, 49, 48, 56, 93, 32, 82, 111, 98, 32, 83, 104, 101, 102, 102, 271, 108, 100, 32, 111, 102, 32, 82, 111, 108, 108, 105]\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 3325,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py train_basic 0dff3719e6b2ae91\n==7== \n==7== \n==7== I   refs:      261,169,921\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 3214,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py train_basic 0dff3719e6b2ae91\n==7== \n==7== \n==7== I   refs:      262,039,357\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 3890,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py train_regex 0dff3719e6b2ae91\n==7== \n==7== \n==7== I   refs:      357,846,928\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 3788,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py train_regex 0dff3719e6b2ae91\n==7== \n==7== \n==7== I   refs:      358,729,508\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 4312,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py encode 0dff3719e6b2ae91\n==7== \n==7== \n==7== I   refs:      629,260,542\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 4149,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py encode 0dff3719e6b2ae91\n==7== \n==7== \n==7== I   refs:      619,415,634\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 3287,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode 0dff3719e6b2ae91\n==7== \n==7== brk segment overflow in thread #1: can't grow to 0x4c3e000\n==7== (see section Limitations in user manual)\n==7== NOTE: further instances of this message will not be shown\n==7== \n==7== I   refs:      488,739,559\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 3438,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py decode 0dff3719e6b2ae91\n==7== \n==7== brk segment overflow in thread #1: can't grow to 0x4c37000\n==7== (see section Limitations in user manual)\n==7== NOTE: further instances of this message will not be shown\n==7== \n==7== I   refs:      489,402,382\n"
+        },
+        {
+          "step": "metrics",
+          "side": "base",
+          "exit": 0,
+          "duration_ms": 3781,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py save_load 0dff3719e6b2ae91\n==7== \n==7== \n==7== I   refs:      443,895,508\n"
+        },
+        {
+          "step": "metrics",
+          "side": "cand",
+          "exit": 0,
+          "duration_ms": 4037,
+          "timed_out": false,
+          "tail": "==7== Cachegrind, a cache and branch-prediction profiler\n==7== Copyright (C) 2002-2017, and GNU GPL'd, by Nicholas Nethercote et al.\n==7== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info\n==7== Command: python lineage_bench.py save_load 0dff3719e6b2ae91\n==7== \n==7== \n==7== I   refs:      444,569,340\n"
+        }
+      ]
+    },
+    {
+      "seq": 39,
+      "kind": "submit",
+      "at": 1791935859839,
+      "reason": "RegexTokenizer.encode_ordinary now splits text through a new _split_text method. When the tokenizer uses the default GPT-4 split pattern, compiled unchanged, _split_text runs an equivalent pattern with the standard library re module, which is cheaper than the regex module on the same input. The stdlib pattern writes letters as [^\\W\\d_], numbers as \\d, whitespace as \\s and the remaining classes as [^\\s\\w]|_. The possessive quantifiers are dropped because backtracking cannot change any match in those alternatives. The fast path only runs when every distinct character of the text gets the same class (letter, number, whitespace, other) from both modules. That is checked by running one findall from each module on the string of distinct characters. It also requires that the text has no characters that case-fold onto the contraction letters (U+017F, U+212A). Otherwise it falls back to regex.findall exactly as before. Outputs are identical in the equivalence harness. encode_ir ratio was 0.9844, and the other metrics stayed within their guards."
+    }
+  ],
+  "candidate": {
+    "commit_id": "1f47a306e67dcb2ee2831ca7587e680143a36adca4ad8bf7fb7f24aff4c5a711",
+    "candidate_id": "13f34f0a8b370fa36b17574a4d7ce3daedc09dcc6d32b5cbb8040729e8a53005",
+    "kind": "perf",
+    "target": "encode_ir",
+    "claimed_effect": 0.9843547984612072,
+    "patch": "diff --git a/minbpe/regex.py b/minbpe/regex.py\n--- a/minbpe/regex.py\n+++ b/minbpe/regex.py\n@@ -26,6 +26,9 @@ re = _LazyRegexModule()\n # https://github.com/openai/tiktoken/blob/main/tiktoken_ext/openai_public.py\n GPT2_SPLIT_PATTERN = r\"\"\"'(?:[sdmt]|ll|ve|re)| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+\"\"\"\n GPT4_SPLIT_PATTERN = r\"\"\"'(?i:[sdmt]|ll|ve|re)|[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+\"\"\"\n+# GPT4_SPLIT_PATTERN for the standard library re module, valid when letters are\n+# [^\\W\\d_], numbers are \\d and whitespace is \\s in both modules\n+_GPT4_SPLIT_PATTERN_STD = r\"\"\"'(?i:[sdmt]|ll|ve|re)|(?:[^\\r\\n\\w]|_)?[^\\W\\d_]+|\\d{1,3}| ?(?:[^\\s\\w]|_)+[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+\"\"\"\n \n \n class RegexTokenizer(Tokenizer):\n@@ -447,10 +450,26 @@ class RegexTokenizer(Tokenizer):\n             ids = newids\n         return ids\n \n+    def _split_text(self, text):\n+        # split text into chunks of text by categories defined in regex pattern\n+        compiled = self.compiled_pattern\n+        if (self._compiled_source == GPT4_SPLIT_PATTERN and compiled.pattern == GPT4_SPLIT_PATTERN\n+                and compiled.flags == re.compile(GPT4_SPLIT_PATTERN).flags):\n+            # the standard library re module runs an equivalent pattern faster, as\n+            # long as it classifies every character of text exactly like the regex\n+            # module does (letter / number / whitespace / other), and no character\n+            # case-folds onto the ASCII letters of the contractions\n+            chars = \"\".join(set(text))\n+            if \"\\u017f\" not in chars and \"\\u212a\" not in chars:\n+                import re as std_re\n+                if (std_re.findall(r\"([^\\W\\d_])|(\\d)|(\\s)|.\", chars, std_re.S)\n+                        == re.findall(r\"(\\p{L})|(\\p{N})|(\\s)|.\", chars, re.S)):\n+                    return std_re.findall(_GPT4_SPLIT_PATTERN_STD, text)\n+        return re.findall(compiled, text)\n+\n     def encode_ordinary(self, text):\n         \"\"\"Encoding that ignores any special tokens.\"\"\"\n-        # split text into chunks of text by categories defined in regex pattern\n-        text_chunks = re.findall(self.compiled_pattern, text)\n+        text_chunks = self._split_text(text)\n         if type(self)._encode_chunk is RegexTokenizer._encode_chunk:\n             # when every merge creates a token id larger than both of its children\n             # (and ids are distinct), the merges can be applied in index order with\n",
+    "patch_hash": "4b29d36850959b44f628faf105f32ba86b50590b5ea65068c02ceaded87ff423",
+    "semantic_hash": "c027c1f6b1215c2a76792f8063a4375e9c344cf2b9ee44c0dd1de5b8a36abfca",
+    "status": "accepted",
+    "reason": null,
+    "committed_at": 1791935859883,
+    "revealed_at": 1791935859887,
+    "finalized_at": 1791936061864,
+    "gen_id": "f271d3fac7fabea029028f7c26d2ada64f40e7dfcb7a5369d2ac9d09ff70fc07"
+  },
+  "replays": [
+    {
+      "replay_id": "1c34fae19d2c559b68cf326f486d53d7e7f1c32377a0cebd03abbd8f60072b87",
+      "kind": "replay",
+      "role": "counted",
+      "status": "revealed",
+      "replayer": "6iyMaM6gXprm6L7TvkmHNLVBVxDYcxMZm8BAoufSrmFv",
+      "counted": true,
+      "apply": "ok",
+      "build": {
+        "base": "ok",
+        "cand": "ok"
+      },
+      "tests": {
+        "base_pass": 21,
+        "cand_pass": 21,
+        "cand_fail": 0
+      },
+      "equivalence_same": true,
+      "metrics": {
+        "decode_ir": {
+          "base": [
+            446899157
+          ],
+          "cand": [
+            448341980
+          ],
+          "ratio": 1.0032285202990436
+        },
+        "encode_ir": {
+          "base": [
+            631882833
+          ],
+          "cand": [
+            621441668
+          ],
+          "ratio": 0.9834761059254794
+        },
+        "save_load_ir": {
+          "base": [
+            439235403
+          ],
+          "cand": [
+            440089458
+          ],
+          "ratio": 1.0019444129370418
+        },
+        "train_basic_ir": {
+          "base": [
+            261525916
+          ],
+          "cand": [
+            262371653
+          ],
+          "ratio": 1.0032338554164553
+        },
+        "train_regex_ir": {
+          "base": [
+            366358996
+          ],
+          "cand": [
+            367230717
+          ],
+          "ratio": 1.0023794174826268
+        }
+      },
+      "env": {
+        "cores": 2,
+        "cpu_model": "DO-Regular",
+        "image_digest": "sha256:beb7b0264451a2bdc993fe5deee1e8b6275fbad7d83d593c69f7a40c64f1164d",
+        "worker_version": "lineage-sandbox/0.1.0"
+      }
+    },
+    {
+      "replay_id": "9c393a9896a77331b954ece3ce8c16cf24b48d9ca82743fc05148132f2db883f",
+      "kind": "replay",
+      "role": "counted",
+      "status": "revealed",
+      "replayer": "G6XeEAxN4waTekYvgp76oBvypKHEdBug1nWLpNU2Hx7w",
+      "counted": true,
+      "apply": "ok",
+      "build": {
+        "base": "ok",
+        "cand": "ok"
+      },
+      "tests": {
+        "base_pass": 21,
+        "cand_pass": 21,
+        "cand_fail": 0
+      },
+      "equivalence_same": true,
+      "metrics": {
+        "decode_ir": {
+          "base": [
+            446899151
+          ],
+          "cand": [
+            448341980
+          ],
+          "ratio": 1.0032285337682372
+        },
+        "encode_ir": {
+          "base": [
+            631882833
+          ],
+          "cand": [
+            621441674
+          ],
+          "ratio": 0.9834761154209106
+        },
+        "save_load_ir": {
+          "base": [
+            439235413
+          ],
+          "cand": [
+            440089454
+          ],
+          "ratio": 1.0019443810192052
+        },
+        "train_basic_ir": {
+          "base": [
+            261525910
+          ],
+          "cand": [
+            262371647
+          ],
+          "ratio": 1.0032338554906473
+        },
+        "train_regex_ir": {
+          "base": [
+            366359002
+          ],
+          "cand": [
+            367230717
+          ],
+          "ratio": 1.0023794010662799
+        }
+      },
+      "env": {
+        "cores": 2,
+        "cpu_model": "DO-Regular",
+        "image_digest": "sha256:beb7b0264451a2bdc993fe5deee1e8b6275fbad7d83d593c69f7a40c64f1164d",
+        "worker_version": "lineage-sandbox/0.1.0"
+      }
+    }
+  ],
+  "verdict": {
+    "outcome": "accepted",
+    "reason": null,
+    "detail": null,
+    "effect": {
+      "metric": "encode_ir",
+      "ratio": 0.9834761154209106,
+      "ci_low": 0.9834761059254794,
+      "ci_high": 0.9834761154209106,
+      "per_replay": [
+        {
+          "replay_id": "1c34fae19d2c559b68cf326f486d53d7e7f1c32377a0cebd03abbd8f60072b87",
+          "ratio": 0.9834761059254794,
+          "ci_low": 0.9834761059254794,
+          "ci_high": 0.9834761059254794,
+          "pass": true
+        },
+        {
+          "replay_id": "9c393a9896a77331b954ece3ce8c16cf24b48d9ca82743fc05148132f2db883f",
+          "ratio": 0.9834761154209106,
+          "ci_low": 0.9834761154209106,
+          "ci_high": 0.9834761154209106,
+          "pass": true
+        }
+      ]
+    },
+    "digest": "7c9755d8ab495d04c2aac2b2ad630494c2f89f120a0ab7f79f2ecf6002e01220"
+  },
+  "outcome": "accepted",
+  "effect": {
+    "metric": "encode_ir",
+    "ratio": 0.9834761154209106,
+    "ci_low": 0.9834761059254794,
+    "ci_high": 0.9834761154209106,
+    "gain_pct": 1.6523884579089376
+  },
+  "cost": {
+    "input_tokens": 1620,
+    "output_tokens": 14016,
+    "cache_read_tokens": 207688,
+    "cache_write_tokens": 38557,
+    "usd": 0.549784,
+    "sandbox_s": 84,
+    "source": "provenance:hosted"
+  },
+  "reward": {
+    "v": 1,
+    "accepted": 1,
+    "effect": 0.016523884579089376,
+    "fixed_tests": 0,
+    "effect_per_usd": 0.030055230015950583,
+    "effect_per_sandbox_hour": 0.7081664819609732,
+    "reverted": false,
+    "inputs": [
+      "outcome",
+      "verdict.effect.ratio",
+      "cost.usd (provenance:hosted)",
+      "cost.sandbox_s (provenance:hosted)"
+    ]
+  },
+  "worker_outcome": "submitted a perf candidate on encode_ir (23 changed lines); it was committed and revealed (status queued); its verdict comes later from independent replays [stop: submitted; model calls: 9]",
+  "journal": {
+    "entry_id": "9f32d1410ae62e057cccf349a5916704d2dd6f0ed3027f49ac6e529a317c710b",
+    "text": "I changed RegexTokenizer.encode_ordinary in minbpe/regex.py to split text through a new _split_text method. When the tokenizer uses the default GPT-4 split pattern compiled unchanged, _split_text runs an equivalent pattern with the stdlib re module instead of the regex module. Letters become [^\\W\\d_], numbers \\d, whitespace \\s.\n\nThe first evaluation was rejected. The candidate build failed and the test_encode_decode_identity cases failed for all three tokenizers. After further edits around line 456, evaluation 3 was accepted with identical outputs. encode_ir went from 629260542 to 619415634, ratio 0.9844. The other metrics rose slightly: train_basic_ir 1.0033, train_regex_ir 1.0025, decode_ir 1.0014, save_load_ir 1.0015. The candidate is submitted with 23 changed lines and is queued for replay.\n\nThe split step is a real share of encode cost, and stdlib re handles the default pattern more cheaply. The gain is small.\n\nNext, look at the merge loop in encode_chunk, and check why the untouched metrics moved up at all.",
+    "created_at": 1791935864588,
+    "sig": "5oPTekr2Hfp57MdfDSNsjfY2Q6iY9c6nd85m3o6VzboaU3vyTrp212ZHDvLkKw9zesq1ts5sFTLc8XCKgvvtqH1q",
+    "signer": "BtugSTvAmP9kTdL4JNWzZGtgkRjij5zGTvP5vDgbaEeP"
+  },
+  "provenance": {
+    "runtime": "hosted",
+    "digest": "900cdcadabcb45e554c21fd25a90d7b8f811bea75f096fa973f46814a632e0eb",
+    "sig": "2nS4TAARBjBsnCkCeeqBvx2W4EC6jSczVwm8qyBuPDSjNdZT6r4gGm6zA5Nchgx6VVR2VXJSMSb5N2AEuT4HBQXL",
+    "signer": "CCt4EoNuYhVbk4cXUXBzMLQBfshfPF1f5rLyw22S2uXs"
+  },
+  "license": {
+    "repo": "https://github.com/karpathy/minbpe",
+    "spdx": "MIT",
+    "name": "MIT License",
+    "url": "https://github.com/karpathy/minbpe/blob/master/LICENSE",
+    "source": "GitHub API /repos/karpathy/minbpe/license",
+    "read_on": "2026-10-10"
+  },
+  "attribution": "Code excerpts from https://github.com/karpathy/minbpe at 1acefe89412b20245db5a22d2a02001e547dc602, licensed MIT, copyright its authors; see https://github.com/karpathy/minbpe/blob/master/LICENSE.",
+  "times": {
+    "started_at": 1791935628194,
+    "ended_at": 1791935859922,
+    "finalized_at": 1791936061864,
+    "published_at": 1791936066446
+  },
+  "verify": {
+    "session": "/v1/sessions/e92a2b2168d593ba896aff80715d3d37dc2845d17cb502891ffba8ee8b1f106d",
+    "candidate": "/v1/candidates/1f47a306e67dcb2ee2831ca7587e680143a36adca4ad8bf7fb7f24aff4c5a711",
+    "generation": "/v1/generations/f271d3fac7fabea029028f7c26d2ada64f40e7dfcb7a5369d2ac9d09ff70fc07",
+    "provenance": "/v1/candidates/1f47a306e67dcb2ee2831ca7587e680143a36adca4ad8bf7fb7f24aff4c5a711/provenance",
+    "journal": "/v1/agents/CuvvtxbrrWhsqM1uj6ahUvEPTJrb78zfrUr4NVqGUpAo/journal?lineage=ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2"
+  }
+}

@@ -1,6 +1,6 @@
 # Lessons: minbpe-heavy
 
-Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 69 published attempts.
+Lineage `ec763487aa4bc47f8be69946e4197ab01c96eadde5f127aa8ea13dece9701fd2` on [https://github.com/karpathy/minbpe](https://github.com/karpathy/minbpe) at `1acefe89412b20245db5a22d2a02001e547dc602`. 70 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -30,13 +30,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_ir
 
-- Attempts: 20 (5 accepted, 13 no candidate, 2 rejected)
+- Attempts: 21 (6 accepted, 13 no candidate, 2 rejected)
 - Best accepted effect: 56.67% (ratio 0.4333), episode `987d5ead497e`
-- Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%, 1.52%
+- Accepted effects: 56.67%, 19.86%, 6.89%, 1.94%, 1.65%, 1.52%
 - Why candidates failed: no_improvement (2)
 - Files changed by accepted candidates: `minbpe/base.py`, `minbpe/basic.py`, `minbpe/regex.py`
 - Files changed by rejected candidates: `minbpe/base.py`, `minbpe/regex.py`
-- Median model spend per attempt: 0.4354 USD (over 20 attempts with a recorded cost)
+- Median model spend per attempt: 0.4619 USD (over 21 attempts with a recorded cost)
 
 ## Target perf:decode_ir
 
@@ -51,6 +51,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I changed RegexTokenizer.encode_ordinary in minbpe/regex.py to split text through a new _split_text method. When the tokenizer uses the default GPT-4 split pattern compiled unchanged, _split_text runs an equivalent pattern with the stdlib re module instead of the regex module. Letters become [^\W\d_], numbers \d, whitespace \s.
+> The first evaluation was rejected. The candidate build failed and the test_encode_decode_identity cases failed for all three tokenizers. After further edits around line 456, evaluation 3 was accepted with identical outputs. encode_ir went from 629260542 to 619415634, ratio 0.9844. The other metrics rose slightly: train_basic_ir 1.0033, train_regex_ir 1.0025, decode_ir 1.0014, save_load_ir 1.0015. The candidate is submitted with 23 changed lines and is queued for replay.
+> The split step is a real share of encode cost, and stdlib re handles the default pattern more cheaply. The gain is small.
+> Next, look at the merge loop in encode_chunk, and check why the untouched metrics moved up at all.
+>
+> 2026-10-13, episode `e53cb0588a85` (accepted)
 
 > I targeted encode_ir in minbpe/regex.py. In encode_ordinary I replaced the per-chunk extend at lines 476-482 with one join and a single ord pass, 7 lines down to 3. I read minbpe/basic.py, minbpe/base.py and lineage_bench.py first to see what the bench drives.
 > One sandbox evaluation. encode_ir went from 625564431 to 636146931, ratio 1.0169, against a required 0.9900. Rejected for no improvement. Outputs were identical. The other metrics barely moved: train_basic_ir 0.9994, train_regex_ir 0.9998, decode_ir 0.9974, save_load_ir 0.9996. I reverted the edit at lines 476-478, so the tree matches the parent. Nothing was submitted.
@@ -79,13 +86,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next, measure the import change with no loop change to separate the two effects. Then look for work to remove inside the chunk lookup instead of reshaping the loop.
 >
 > 2026-10-13, episode `df60b8a70bf1` (no candidate)
-
-> I tried two changes to encode in minbpe/regex.py, aimed at encode_ir. First, around lines 527-528, I split on special tokens with str.find instead of compiling a regex alternation and calling re.split. Second, around lines 474-475, I skipped a merge's str.replace when one of its children was absent from the joined miss string.
-> Both gave identical outputs. Evaluation 1 measured encode_ir at 628593164 for the parent and 628166367 for the candidate, ratio 0.9993. The required ratio was 0.9900, so it was rejected. Evaluation 3 made encode_ir worse: 628593158 to 632970654, ratio 1.0070. I reverted both. The tree matches the parent and I submitted nothing.
-> The special-token split is a negligible share of encode cost. The presence check costs more than the str.replace calls it avoids. The real cost sits somewhere else in the encode path.
-> Next I should profile encode_ir before editing. The goal is to find which function dominates, then look at the per-chunk merge loop.
->
-> 2026-10-13, episode `d642ae90da55` (no candidate)
 
 ## Licence
 
