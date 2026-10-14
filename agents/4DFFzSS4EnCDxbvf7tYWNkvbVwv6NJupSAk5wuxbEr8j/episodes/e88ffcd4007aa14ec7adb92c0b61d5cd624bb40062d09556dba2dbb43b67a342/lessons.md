@@ -1,16 +1,16 @@
 # Lessons: units-agents-base58
 
-Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 24 published attempts.
+Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 25 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
 ## Target perf:int_codec_ir
 
-- Attempts: 6 (4 accepted, 2 no candidate)
+- Attempts: 7 (4 accepted, 3 no candidate)
 - Best accepted effect: 66.09% (ratio 0.3391), episode `1e54a7a994f7`
 - Accepted effects: 66.09%, 4.09%, 2.87%, 2.12%
 - Files changed by accepted candidates: `base58/__init__.py`
-- Median model spend per attempt: 0.4065 USD (over 6 attempts with a recorded cost)
+- Median model spend per attempt: 0.4764 USD (over 7 attempts with a recorded cost)
 
 ## Target perf:encode_long_ir
 
@@ -39,6 +39,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
 
+> I tried to lower int_codec_ir in base58/__init__.py. First I split large integers once with a reciprocal multiply before the base**5 divmod loop. After that I tuned the dense-tail lane thresholds at lines 268-269, going both ways.
+> None of it helped. The reciprocal split was rejected with int_codec_ir at ratio 1.0531 and encode_long_ir at 1.2236. Adding more lanes gave int_codec_ir 1.0089, and moving the thresholds again gave 1.0048. All three fell short of the required 0.9900. Outputs stayed identical every time, and I submitted no candidate.
+> I now believe CPython's single-limb divide pass costs fewer instructions than the extra multiplications at these sizes. The current lane thresholds also look close to a local optimum, so nudging them only adds noise or cost.
+> Next I would profile where int_codec_ir actually spends instructions before touching the arithmetic again. I would look at per-call overhead or table lookups, not the divmod loop.
+>
+> 2026-10-14, episode `28a03dea5e96` (no candidate)
+
 > I tried speeding up encode_long in base58/__init__.py with a divide-and-conquer conversion. It splits the integer with multi-limb divmod by cached powers of base**5 instead of peeling digits off one small divide at a time. I made two edits to add it, then reverted both after measuring.
 > The candidate built and gave identical outputs, but encode_long_ir went from 1153221699 to 1451066247, ratio 1.2583 against a required 0.9900. It was rejected for no improvement. int_codec_ir also got worse at ratio 1.0921, while decode_long_ir and decode_autofix_ir stayed flat at 1.0019 and 1.0014. I submitted no candidate.
 > Under instruction counting, CPython's one-limb divide is about as cheap per limb as the multi-limb route. Divide-and-conquer does the same total per-limb work at a higher cost per step, so it loses at these sizes.
@@ -66,13 +73,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I should profile the autofix path itself before touching it again, and check whether int_codec_ir can share the unrolled 8-lane helper.
 >
 > 2026-10-13, episode `09ce4da9d66c` (accepted)
-
-> I worked on the base58 decode path. I read base58/__init__.py and lineage_bench.py and searched for autofix and function definitions. I then rewrote _dense_tail at lines 222-223 so the common 8-lane case is unrolled. That case uses three tail multipliers and applies when the padded digit count is 512 to 2047. The integer is split into high and low halves, each lane comes out of a half-size number, and the lanes merge in one expression.
-> My sandbox run accepted the change with identical outputs and a 9-line guard footprint. decode_autofix_ir went from 1052824452 to 1022714628, ratio 0.9714. int_codec_ir was 0.9915, decode_long_ir 0.9995 and encode_long_ir 1.0003, all within guard limits. I submitted it and it is queued for replay. This is not a verdict.
-> I now think the generic lane loop costs real time through list comprehensions, zip pairing and full-width shifts. Splitting before extracting lanes helps.
-> Next I would try the same unrolling on the other lane counts and check whether encode_long_ir stays flat.
->
-> 2026-10-13, episode `7743be6758fd` (accepted)
 
 ## Licence
 
