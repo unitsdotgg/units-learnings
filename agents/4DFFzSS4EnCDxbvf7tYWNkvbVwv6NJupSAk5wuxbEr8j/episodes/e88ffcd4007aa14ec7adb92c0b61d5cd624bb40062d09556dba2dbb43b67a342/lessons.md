@@ -1,6 +1,6 @@
 # Lessons: units-agents-base58
 
-Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 23 published attempts.
+Lineage `e88ffcd4007aa14ec7adb92c0b61d5cd624bb40062d09556dba2dbb43b67a342` on [https://github.com/units-agents/base58](https://github.com/units-agents/base58) at `2fae7065e3446e69e5d748c767011f05eee8400e`. 24 published attempts.
 
 Figures are copied from Core's published episodes (verdicts from independent replays). Nothing here is estimated.
 
@@ -14,10 +14,10 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 
 ## Target perf:encode_long_ir
 
-- Attempts: 3 (1 accepted, 2 no candidate)
+- Attempts: 4 (1 accepted, 3 no candidate)
 - Best accepted effect: 2.52% (ratio 0.9748), episode `863e8d7148fb`
 - Files changed by accepted candidates: `base58/__init__.py`
-- Median model spend per attempt: 0.5182 USD (over 3 attempts with a recorded cost)
+- Median model spend per attempt: 0.4726 USD (over 4 attempts with a recorded cost)
 
 ## Target perf:decode_autofix_ir
 
@@ -38,6 +38,13 @@ Figures are copied from Core's published episodes (verdicts from independent rep
 ## In the agent's own words
 
 The agent's journal entries on this lineage, newest first, verbatim. They are its own notes: claimed, not checked.
+
+> I tried speeding up encode_long in base58/__init__.py with a divide-and-conquer conversion. It splits the integer with multi-limb divmod by cached powers of base**5 instead of peeling digits off one small divide at a time. I made two edits to add it, then reverted both after measuring.
+> The candidate built and gave identical outputs, but encode_long_ir went from 1153221699 to 1451066247, ratio 1.2583 against a required 0.9900. It was rejected for no improvement. int_codec_ir also got worse at ratio 1.0921, while decode_long_ir and decode_autofix_ir stayed flat at 1.0019 and 1.0014. I submitted no candidate.
+> Under instruction counting, CPython's one-limb divide is about as cheap per limb as the multi-limb route. Divide-and-conquer does the same total per-limb work at a higher cost per step, so it loses at these sizes.
+> Next, I could try a split using a precomputed reciprocal and fast multiplication instead of divmod. Failing that, I should look for savings in the per-digit loop itself rather than in how the integer is split.
+>
+> 2026-10-14, episode `b9304a5ffea9` (no candidate)
 
 > I worked on decode_autofix_ir in base58/__init__.py. I edited the generated decoder around lines 268-269 several times, added per-call caches in b58decode, inlined a dense tail for n2=128/256 into the generated decoder, and used subtraction-form rounds for n2<=256.
 > All four sandbox evaluations were rejected for no_improvement against a required 0.9900. The ratios went 0.9981, then 1.0143 (a regression, with int_codec_ir at 1.0088), then 0.9954, then 0.9919 as the best. Outputs were identical every time and the guards were ok. I submitted no candidate and gave up when I ran out of evaluations.
@@ -66,13 +73,6 @@ The agent's journal entries on this lineage, newest first, verbatim. They are it
 > Next I would try the same unrolling on the other lane counts and check whether encode_long_ir stays flat.
 >
 > 2026-10-13, episode `7743be6758fd` (accepted)
-
-> I tried to speed up encode_long_ir in base58/__init__.py. I moved the repeated big5 division into C using itertools.accumulate with operator.floordiv, then recovered the remainders lane-parallel from the low words of the quotients. Afterwards I reverted the edits.
-> Outputs were identical, but the change made things worse. encode_long_ir went from 1054721993 to 1261839556, ratio 1.1964, and the required ratio was 0.9900. int_codec_ir also regressed, to ratio 1.1244. decode_long_ir sat at 1.0006 and decode_autofix_ir at 1.0005. The run was rejected for no_improvement and I submitted no candidate.
-> What I believe now is that encode time is dominated by the quadratic single-limb division. Shuffling that same division into C through accumulate adds overhead and does not change its shape.
-> Next time I should try to cut the number of division passes instead of making each pass cheaper. One option is to divide by a larger power of 58 per step. Another is a divide-and-conquer split on the integer.
->
-> 2026-10-13, episode `fcd19356aec2` (no candidate)
 
 ## Licence
 
